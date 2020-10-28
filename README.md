@@ -60,16 +60,26 @@ certificate.cert-manager.io "example-io-selfsigned" deleted
 
 ## High-Level Design of the CRD
 
-We will use an example of a CRD that will go over life cycle, which means having multiple versions over time.
-The webhook on the controller will handle the changes across versions.
+Our CRD example will go over a life cycle, which means having multiple versions over time.
+And the webhook on the controller will handle the changes across versions.
 
-Our example will use these following parameters:
+Our example:
 - domain: example.io
 - group: music
 - kind: rockband
 - versions: v1beta1, v1, v2alpha1, etc
 
+So our CRD will be rockbands.music.example.io. The CRD will have information of a given rockband under the API group music.example.io.
+
+```
+$ kubectl get crd rockbands.music.example.io
+NAME                         CREATED AT
+rockbands.music.example.io   2020-10-28T19:51:25Z
+```
+We will talk about the specs on the examples.
+
 ## First Example: A single Group Version Kind (GVK)
 
-This is the first example and start with this directory.
-There is one group, one version and one kind.
+This is the first example.
+Start following the README.md there.
+We will start with one version of the group and kind.
