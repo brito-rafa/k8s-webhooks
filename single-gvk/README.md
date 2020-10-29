@@ -27,6 +27,7 @@ It creates a directory structure. The final result of this code is under music/ 
 ## Creating our own CRD business logic
 
 Our CRD schema is created by scaffolding but does not have any business logic.
+
 For this version v1, I will set the following fields on RockBand.Spec and RockBand.Status on the file `music/api/v1/rockband_types.go`:
 
 ```go
@@ -46,7 +47,8 @@ type RockBandStatus struct {
 }
 ```
 
-As you can see, this is really a simple and silly example. RockBand has genre, number of components and lead singer as part of the Spec struc. And they are all optional. On Status struct, I decided to add on arbitrarily field called lastPlayed.
+As you can see, this is really a simple and silly example. RockBand has genre, number of components and lead singer as part of the Spec struct.
+And they are all optional. On Status struct, I decided to add on arbitrarily field called lastPlayed.
 In this example, the Status field does not have a Spec counterpart. In real world, the Spec and Status fields are similar and controller reconciles them.
 
 We want to use the latest CRD features, for such, please edit `Makefile` and set to the following line:
