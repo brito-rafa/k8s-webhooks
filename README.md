@@ -80,6 +80,6 @@ We will talk about the specs on the examples.
 
 ## First Example: A single Group Version Kind (GVK)
 
-This is the first example.
-Start following the README.md there.
-We will start with one version of the group and kind.
+This is the first example and we will start with one version of the group and kind.
+Please start at [README.md](/single-gvk/README.md).
+
