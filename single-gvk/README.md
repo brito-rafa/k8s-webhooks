@@ -1,63 +1,153 @@
-# How to create CRDs
+# First Example
 
-## Conceptual
+A single version of a kind on an api group.
 
-Define the following parameters:
-- domain: example.io
-- group: music
-- kind: rockband
-- versions: v1beta1, v1, v2alpha1, etc
+As I mentioned before, this code is focused only to create a CRD/webhook/controller from scratch, not doing anything business-fancy.
 
-References:
-https://book.kubebuilder.io/multiversion-tutorial/tutorial.html
+We will do minimum code to update or instrument the CRD, but the focus is managing the schema changes of CRD and how webhook will help us. 
 
+Of course, you can use this tutorial to spring-board to a more serious controller. 
+For such, I recommend you to look at our other example https://github.com/embano1/codeconnect-vm-operator.
 
-## Generating
+## Scaffolding
 
-How to create the skeleton:
+First step is using the kubebuilder scaffolding:
 
 ```
-mkdir music
+mkdir music; cd music
 go mod init music
 kubebuilder init --domain example.io
-kubebuilder create api --group music --version v1alpha1 --kind RockBand
 kubebuilder create api --group music --version v1 --kind RockBand
 kubebuilder create webhook --group music --version v1 --kind RockBand --defaulting --programmatic-validation
 ```
 
-Edit the type files and pick one to be the (preferred version)[https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions]:
+It creates a directory structure. The final result of this code is under music/ subdirectory here.
 
-```
-// +kubebuilder:storageversion
+## Creating our own CRD business logic
+
+Our CRD schema is created by scaffolding but does not have any business logic.
+For this version v1, I will set the following fields on RockBand.Spec and RockBand.Status on the file `music/api/v1/rockband_types.go`:
+
+```go
+// RockBandSpec defines the desired state of RockBand
+type RockBandSpec struct {
+	// +kubebuilder:validation:Optional
+	Genre string `json:"genre"`
+	// +kubebuilder:validation:Optional
+	NumberComponents int32 `json:"numberComponents"`
+	// +kubebuilder:validation:Optional
+	LeadSinger string `json:"leadSinger"`
+}
+
+// RockBandStatus defines the observed state of RockBand
+type RockBandStatus struct {
+	LastPlayed string `json:"lastPlayed"`
+}
 ```
 
-Edit Makefile and set CRD line:
+As you can see, this is really a simple and silly example. RockBand has genre, number of components and lead singer as part of the Spec struc. And they are all optional. On Status struct, I decided to add on arbitrarily field called lastPlayed.
+In this example, the Status field does not have a Spec counterpart. In real world, the Spec and Status fields are similar and controller reconciles them.
+
+We want to use the latest CRD features, for such, please edit `Makefile` and set to the following line:
+
 ```
 CRD_OPTIONS ?= "crd:preserveUnknownFields=false,crdVersions=v1,trivialVersions=true"
 ```
 
-Finally, then run
+*Attention*: I had issues with the `Makefile` default CRD line, so make sure you change to the above.
 
+## Generating and Installing the CRD
+
+Generate the CRD running:
 ```
 make manifests && make generate
 ```
 
-## Installing on the cluster
+If you have issues, please refer to the original code of this directory.
+
+Now inspect the file `config/crd/bases/music.example.io_rockbands.yaml`. 
+If you apply this files as is on your cluster, you will deploy the CRD.
+
+Alternatively, you can run:
 
 ```
 make install
 ```
 
-## CRD Conversion and Webhooks
+Once installed, you can check the CRDs on your cluster running:
 
-Theory here:
-https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/
+```
+kubectl get crds
+```
+
+Listing specific versions of the object:
+
+```
+kubectl get rockband.v1alpha1.music.example.io beatles -o yaml
+```
+
+## Compiling and Starting the Controller
+
+I do not care about the busines logic on the controller, so the only thing my controller will do is setting the lastPlayed Status field with the current year.
+Here is the snippet of the `music/controllers/rockband_controller.go`
+
+```go
+  // your logic here
+
+	rb := &musicv1.RockBand{}
+	if err := r.Client.Get(ctx, req.NamespacedName, rb); err != nil {
+		// add some debug information if it's not a NotFound error
+		if !k8serr.IsNotFound(err) {
+			log.Error(err, "unable to fetch RockBand")
+		}
+		// we'll ignore not-found errors, since they can't be fixed by an immediate
+		// requeue (we'll need to wait for a new notification), and we can get them
+		// on deleted requests.
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	msg := fmt.Sprintf("received reconcile request for %q (namespace: %q)", rb.GetName(), rb.GetNamespace())
+	log.Info(msg)
+
+	if rb.Status.LastPlayed == "" {
+		year := time.Now().Year()
+		// Adding the year in Status filed for now
+		rb.Status.LastPlayed = strconv.Itoa(year)
+		if err := r.Status().Update(ctx, rb); err != nil {
+			log.Error(err, "unable to update RockBand status")
+			return ctrl.Result{}, err
+		}
+	}
+```
+
+At this time, the controller must be able to be compiled without errors. You can try to run:
+
+```
+export IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
+make docker-build
+docker push quay.io/brito_rafa/music-controller:single-gvk-v0.1
+make deploy
+```
+
+## CRD Mutation and Validation
+
+For this demo, we came up with a couple silly rules just to make a point how to mutate and validate RockBands objects.
+
+Mutation: 
+1. if LeadSinger is not specified, set it as "TBD".
+2. if RockBand CR name is "beatles" and Lead Singer is "John", set it to "John Lennon" (disclaimer: some Beatles fans (including me) will argue The Beatles did not have "a" Lead Singer).
+
+Validation:
+1. We can't create RockBands CRs on "kube-system" namespace
+2. We can't update Lead Singer as "John" if RockBand CR name is "beatles" (similar to mutation, but during at update time. Spoiler: this condition will never met because of the mutation logic)
+3. We can't update Lead Singer as "Ringo" if RockBand CR name is  "beatles" .
+
 
 ### Code
 
+Scaffolding should have created the following files: `music/main.go` and `music/api/v1/rockband_webhook.go`.
+
 The main.go starts the webhook server.
-On your preferred version api directory, you should have rockband_webhook.go and rockband_conversion.go.
-For each other supported version, you will need functions ConvertTo and ConvertFrom functions. They should be rockband_conversion.go.
 
 #### main.go
 
@@ -74,20 +164,9 @@ It must have the invokation of the webhook, otherwise the webhook will not run:
 
 This where your mutation and validation logic will reside.
 
-For this demo, we came up with a couple silly rules just to make a point how to mutate and validate objects.
-
-Mutation: 
-1. if LeadSinger is not specified, set it as "TBD".
-2. if RockBand name is "beatles" and Lead Singer is "John", set it to "John Lennon" (disclaimer: some Beatles fans (including me) will argue The Beatles did not have "a" Lead Singer).
-
-Validation:
-1. We can't create RockBands CRs on "kube-system" namespace
-2. We can't set as "John" as Lead Singer of Object Name "beatles" (similar to mutation, but during at update time. Spoiler: this condition will never met because of the mutation)
-3. We can't update the Lead Singer as "Ringo" of Object Name "beatles" 
-
-Note that during validation, one CAN'T change fields, only generate errors - see the kubebuilder option mutating=false.
-
 Code snippet for Mutator. Remember, this will execute for each CR request.
+
+Note that during validation calls, one CAN'T change fields, only generate errors - see the kubebuilder option mutating=false.
 
 ```
 ```
@@ -389,8 +468,28 @@ Error: no matches for OriginalId admissionregistration.k8s.io_v1beta1_Validating
 
 
 ## Multi-API
-Listing specific versions of the object:
+
+kubebuilder init --domain example.io
+kubebuilder create api --group music --version v1alpha1 --kind RockBand
+kubebuilder create api --group music --version v1 --kind RockBand
+kubebuilder create webhook --group music --version v1 --kind RockBand --defaulting --programmatic-validation
+```
+
+Edit the type files and pick one to be the (preferred version)[https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions]:
 
 ```
-kubectl get rockband.v1alpha1.music.example.io beatles -o yaml
+// +kubebuilder:storageversion
+```
+
+On your preferred version api directory, you should have rockband_convert.go.
+For each other supported version, you will need functions ConvertTo and ConvertFrom functions. They should be rockband_conversion.go.
+
+
+References:
+https://book.kubebuilder.io/multiversion-tutorial/tutorial.html
+
+Edit the type files and pick one to be the (preferred version)[https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions]:
+
+```
+// +kubebuilder:storageversion
 ```

@@ -1,6 +1,6 @@
 # Kubernetes Custom Resource Definitions and Webhooks
 
-This is a repository to give a simple example in how to create k8s Custom Resource Definitions (CRD) and webhooks using kubebuilder.
+This is a repository to give a simple example in how to create k8s Custom Resource Definitions (CRD) and [webhooks](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) using [kubebuilder](https://go.kubebuilder.io/).
 
 One can just create CRDs and Custom Resources (CRs) on a k8s cluster, but they will do not much without a controller with webhooks (required for mutation and validation).
 
