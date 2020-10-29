@@ -8,6 +8,9 @@ In addition, I recommend you to look at our other controller example https://git
 
 The final result of this code is under music/ subdirectory. You can use it as reference, but we will start from an empty directory.
 
+For the impatients who want to see the final result without running these steps: the file is [rockband-music-controller-v1.yaml](/single-gvk/rockband-music-controller-v1.yaml) using the controller docker image quay.io/brito_rafa/music-controller:single-gvk-v0.1 .
+
+
 ## Scaffolding
 
 First step is using the kubebuilder scaffolding:
