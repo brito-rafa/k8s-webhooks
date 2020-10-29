@@ -273,12 +273,12 @@ The validations in this section are for academic purposes.
 
 Mutation: 
 1. if LeadSinger is not specified, set it as "TBD".
-2. if RockBand CR name is "beatles" and Lead Singer is "John", set it to "John Lennon" (disclaimer: some Beatles fans (including me) will argue The Beatles did not have "the" Lead Singer).
+2. if RockBand CR name is "beatles" and Lead Singer is "John", set it to "John Lennon" (disclaimer: some Beatles fans (including me) will argue The Beatles did not have a single Lead Singer).
 
 Validation:
 1. We can't create RockBands CRs on "kube-system" namespace
 2. We can't update Lead Singer as "John" if RockBand CR name is "beatles" (similar to mutation, but during at update time. Spoiler: this condition will never met because of the mutation logic)
-3. We can't update Lead Singer as "Ringo" if RockBand CR name is  "beatles" .
+3. We can't update Lead Singer as "Ringo" if RockBand CR name is "beatles" .
 
 
 ### Code
@@ -589,7 +589,7 @@ I1029 04:53:54.119549       1 leaderelection.go:252] successfully acquired lease
 
 ## Testing the webhook
 
-### Creation
+### Mutation
 
 Let's use the same example to test my first mutation:
 
@@ -646,6 +646,8 @@ status:
   lastPlayed: "2020"
 ```
 
+### Creation Validation
+
 Let's test the validation creation now:
 
 ```
@@ -663,6 +665,8 @@ Here are the controller logs for the creation validation:
 2020-10-28T21:40:32.090Z        INFO    rockband-resource       validate create {"name": "beatles", "namespace": "kube-system", "lead singer": "John Lennon"}
 2020-10-28T21:40:32.090Z        DEBUG   controller-runtime.webhook.webhooks     wrote response  {"webhook": "/validate-music-example-io-v1-rockband", "UID": "2e6212dc-8bd6-468a-92e2-2a078eb41122", "allowed": false, "result": {}, "resultError": "got runtime.Object without object metadata: &Status{ListMeta:ListMeta{SelfLink:,ResourceVersion:,Continue:,RemainingItemCount:nil,},Status:,Message:,Reason:RockBand.music.example.io \"beatles\" is invalid: metadata.namespace: Invalid value: \"kube-system\": is forbidden to have rockbands.,Details:nil,Code:403,}"}
 ```
+
+### Update Validation
 
 Let's test the update validation now. If you remember, the code does not let you to setup leadSinger as "John" if the rockband is "beatles".
 
@@ -723,8 +727,22 @@ With these tests, we conclude the sample code for a single version of the API Gr
 
 Next, we will test with two versions of API Groups and webhook to mutate them.
 
+## Deploying the CRD + controller without Kubebuilder
 
-## Common Errors
+Once you build the controller and the CRD, you can generate the yaml file to distribute to other users.
+You generate yaml by running the following:
+
+```bash
+$kustomize build config/default > ../rockband-music-controller-v1.yaml
+```
+
+The file is [rockband-music-controller-v1.yaml](/single-gvk/rockband-music-controller-v1.yaml) and anyone can deploy it running:
+
+```bash
+kubectl create -f rockband-music-controller-v1.yaml
+```
+
+## Errors Found during this Code
 
 This section is a collection of the errors that I encountered during the creation of the webhook.
 
