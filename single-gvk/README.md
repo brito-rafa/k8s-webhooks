@@ -62,7 +62,8 @@ CRD_OPTIONS ?= "crd:preserveUnknownFields=false,crdVersions=v1,trivialVersions=t
 ## Generating and Installing the CRD
 
 Generate the CRD running:
-```
+
+```bash
 $ make manifests && make generate
 ```
 
@@ -73,29 +74,79 @@ If you apply this files as is on your cluster, you will deploy the CRD.
 
 Alternatively, you can run:
 
-```
+```bash
 $ make install
-kustomize build config/crd | kubectl apply -f -
+(...)
 customresourcedefinition.apiextensions.k8s.io/rockbands.music.example.io created
 ```
 
 Once installed, you can check the CRDs on your cluster running:
 
-```
+```bash
 $ kubectl get crds
 NAME                         CREATED AT
 rockbands.music.example.io   2020-10-29T02:37:21Z
 ```
 
-Listing specific versions of the object:
+Create one custom resource (CR) named "beatles" from the example [here](/single-gvk/music/config/samples/music_v1_rockband.yaml).
 
+```bash
+$ cat music_v1_rockband.yaml 
+apiVersion: music.example.io/v1
+kind: RockBand
+metadata:
+  name: beatles
+spec:
+  # Add fields here
+  genre: '60s rock'
+  numberComponents: 4
+  leadSinger: John
 ```
-kubectl get rockband.v1alpha1.music.example.io beatles -o yaml
+
+Let's create this CR:
+
+```bash
+$ kubectl create -f music_v1_rockband.yaml -n default
+rockband.music.example.io/beatles created
 ```
+
+Let's list the CR:
+
+```bash
+$ kubectl get rockband beatles -o yaml
+apiVersion: music.example.io/v1
+kind: RockBand
+metadata:
+  creationTimestamp: "2020-10-29T02:50:16Z"
+  generation: 1
+  managedFields:
+  - apiVersion: music.example.io/v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:spec:
+        .: {}
+        f:genre: {}
+        f:leadSinger: {}
+        f:numberComponents: {}
+    manager: kubectl
+    operation: Update
+    time: "2020-10-29T02:50:16Z"
+  name: beatles
+  namespace: default
+  resourceVersion: "3167"
+  selfLink: /apis/music.example.io/v1/namespaces/default/rockbands/beatles
+  uid: 0a7e5845-1f79-42f9-82d1-de5d3b45999b
+spec:
+  genre: 60s rock
+  leadSinger: John
+  numberComponents: 4
+```
+
+Please note that there is no Status set. This is because we do not have yet a controller. See next section.
 
 ## Compiling and Starting the Controller
 
-I do not care about the busines logic on the controller, so the only thing my controller will do is setting the lastPlayed Status field with the current year.
+Since we do not care much about the busines logic on the controller, the only thing my controller will do is setting the lastPlayed Status field with the current year.
 Here is the snippet of the `music/controllers/rockband_controller.go`
 
 ```go
@@ -125,16 +176,101 @@ Here is the snippet of the `music/controllers/rockband_controller.go`
 			return ctrl.Result{}, err
 		}
 	}
+	return ctrl.Result{}, nil
 ```
 
-At this time, the controller must be able to be compiled without errors. You can try to run:
+At this time, the controller should be able to be compiled without errors running `make docker-build`.
+I will build an image from the controller and name as `quay.io/brito_rafa/music-controller:single-gvk-v0.1`.
+
+```
+export IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
+make docker-build
+(...)
+Successfully built 1262ea2263df
+Successfully tagged quay.io/brito_rafa/music-controller:single-gvk-v0.1
+```
+
+Let's test the controller before coding any webhooks.
+For such, let's comment out the webhook call from the `main.go` .
+*Attention:* if you do not do this, you will be able to deploy the controller, but it will fail the execution (missing the certs).
+
+Lines to be commented out - for now:
+```go main.go
+        /*
+        if err = (&musicv1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
+                setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
+                os.Exit(1)
+        }
+        */
+
+```
+
+
+Run:
 
 ```
 export IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
 make docker-build
 docker push quay.io/brito_rafa/music-controller:single-gvk-v0.1
-make deploy
+make deploy IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
 ```
+
+You might see an error of missing namespace `music-system`:
+
+```bash
+Error from server (NotFound): error when creating "STDIN": namespaces "music-system" not found
+```
+For some reason kubebuilder+kustomize fails to set the namespace correctly (it creates namespace `system` instead).
+Create the `music-system` namespace and try again:
+
+```bash
+$ kubectl create namespace music-system
+$ make deploy IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
+(...)
+deployment.apps/music-controller-manager created
+```
+
+Look at the log of the controller:
+
+```bash
+$ kubectl logs music-controller-manager-867b6f899c-7vw2q -n music-system manager
+2020-10-29T03:30:44.858Z	INFO	controller-runtime.metrics	metrics server is starting to listen	{"addr": "127.0.0.1:8080"}
+2020-10-29T03:30:44.858Z	INFO	setup	starting manager
+I1029 03:30:44.859074       1 leaderelection.go:242] attempting to acquire leader lease  music-system/9f9c4fd4.example.io...
+2020-10-29T03:30:44.859Z	INFO	controller-runtime.manager	starting metrics server	{"path": "/metrics"}
+I1029 03:31:02.369750       1 leaderelection.go:252] successfully acquired lease music-system/9f9c4fd4.example.io
+2020-10-29T03:31:02.370Z	DEBUG	controller-runtime.manager.events	Normal	{"object": {"kind":"ConfigMap","namespace":"music-system","name":"9f9c4fd4.example.io","uid":"727f114e-e7f3-4a79-b01f-82a2db2c1e8c","apiVersion":"v1","resourceVersion":"12506"}, "reason": "LeaderElection", "message": "music-controller-manager-867b6f899c-7vw2q_932dbf62-d492-4ca2-86f7-f9b98811f6d2 became leader"}
+2020-10-29T03:31:02.370Z	INFO	controller-runtime.controller	Starting EventSource	{"controller": "rockband", "source": "kind source: /, Kind="}
+2020-10-29T03:31:02.472Z	INFO	controller-runtime.controller	Starting Controller	{"controller": "rockband"}
+2020-10-29T03:31:02.472Z	INFO	controller-runtime.controller	Starting workers	{"controller": "rockband", "worker count": 1}
+2020-10-29T03:31:02.472Z	INFO	controllers.RockBand	received reconcile request for "beatles" (namespace: "default")	{"rockband": "default/beatles"}
+2020-10-29T03:31:02.485Z	DEBUG	controller-runtime.controller	Successfully Reconciled	{"controller": "rockband", "request": "default/beatles"}
+2020-10-29T03:31:02.487Z	INFO	controllers.RockBand	received reconcile request for "beatles" (namespace: "default")	{"rockband": "default/beatles"}
+2020-10-29T03:31:02.487Z	DEBUG	controller-runtime.controller	Successfully Reconciled	{"controller": "rockband", "request": "default/beatles"}
+```
+
+If you see errors, please refer to the section "common errors" later this page.
+
+Note from the logs that controller already reconciled the CR `default/beatles`.
+
+Let's look again the CR `beatles` under `default` namespace:
+
+```bash
+$ kubectl get rockband beatles -n default -o yaml
+apiVersion: music.example.io/v1
+kind: RockBand
+metadata:
+(...)
+spec:
+  genre: 60s rock
+  leadSinger: John
+  numberComponents: 4
+status:
+  lastPlayed: "2020"
+```
+
+Note that we have a status field now. Let's now code mutator and validator webhooks.
+
 
 ## CRD Mutation and Validation
 
@@ -152,15 +288,15 @@ Validation:
 
 ### Code
 
-Scaffolding should have created the following files: `music/main.go` and `music/api/v1/rockband_webhook.go`.
+Scaffolding should have created the file  `music/api/v1/rockband_webhook.go`.
 
-The main.go starts the webhook server.
+But let's start with main.go first.
 
 #### main.go
 
-It must have the invokation of the webhook, otherwise the webhook will not run:
+Let's reinstate the webhook call on main.go, otherwise the webhook will not run:
 
-```
+```go main.go
 	if err = (&musicv1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
 		os.Exit(1)
@@ -171,6 +307,7 @@ It must have the invokation of the webhook, otherwise the webhook will not run:
 
 This where your mutation and validation logic will reside.
 
+
 Code snippet for Mutator. Remember, this will execute for each CR request.
 
 Note that during validation calls, one CAN'T change fields, only generate errors - see the kubebuilder option mutating=false.
@@ -178,6 +315,8 @@ Note that during validation calls, one CAN'T change fields, only generate errors
 ```
 ```
 ## Testing the webhook
+
+*Attention*: if you have not installed the cert-manager, the time is now.
 
 ### Creation
 
@@ -309,73 +448,9 @@ Let's see the controller logs:
 ```
 
 
-### Certs
 
-Webhooks require a tls cert and key.
-
-#### Controller running locally
-
-If you are testing the webhook locally, the certs are expected under the directory `/tmp/k8s-webhook-server/serving-certs`.
-
-Create and install the key/cert running:
-
-```
-openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out tls.crt -keyout tls.key
-# answer all the questions
-mkdir -p /tmp/k8s-webhook-server/serving-certs
-mv tls.* /tmp/k8s-webhook-server/serving-certs
-```
-
-During the execution of the controller, possible the webhook will complain to a different directory than /tmp/k8s-webhook-server/serving-certs .
-In this case, just copy the tsl.* files to the directory.
-
-It is possible that running locally the webhook is never called. In this case, you will need to deploy them on the cluster (see next section).
 
 #### Controller running on the Cluster
-
-https://cert-manager.io/docs/installation/kubernetes/
-
-```
-kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
-```
-It should like this:
-
-```
-kubectl get pods --namespace cert-manager
-NAME                                       READY   STATUS    RESTARTS   AGE
-cert-manager-59dbb7958b-t4w68              1/1     Running   0          24s
-cert-manager-cainjector-5df5cf79bf-j9h8m   1/1     Running   1          24s
-cert-manager-webhook-8557565b68-hpp5f      1/1     Running   0          24s
-```
-
-Testing the issuer and cert creation:
-
-```
-kubectl create namespace music-system
-cat <<EOF > example-io-self-signed.yaml
----
-apiVersion: cert-manager.io/v1
-kind: Issuer
-metadata:
-  name: example-io-selfsigned
-  namespace: music-system
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: example-io-selfsigned
-  namespace: music-system
-spec:
-  dnsNames:
-    - example.io
-  secretName: example-io-selfsigned-cert-tls
-  issuerRef:
-    name: example-io-selfsigned
-EOF
-kubectl create -f example-io-self-signed.yaml
-```
 
 Let's configure the `config/certmanager/certificate.yaml` for a self-signed issuer and a cert.
 Accept the defaults but they need to be added under a namespace, the example below, it is "music-system" (instead of the default "system"):
@@ -435,34 +510,48 @@ Another error, because the webhook was generated for v1beta1, the spec is .spec.
 error: error validating "STDIN": error validating data: ValidationError(CustomResourceDefinition.spec.conversion): unknown field "webhookClientConfig" in io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceConversion; if you choose to ignore these errors, turn validation off with --validate=false
 ```
 
-## Testing Commands
+## Common Errors
 
-If you are using kind you do need to push the controller into a public docker registry.
-Use load
+### Lack of certs or cert-manager
+
+If the controller has the webhooks enabled but there is no certs from cert-manager:
+
+```bash
+$ kubectl logs music-controller-manager-78949d85d7-gtmhz -n music-system 
+error: a container name must be specified for pod music-controller-manager-78949d85d7-gtmhz, choose one of: [manager kube-rbac-proxy]
+MacBook-Pro:music rbrito$ kubectl logs music-controller-manager-78949d85d7-gtmhz -n music-system manager
+2020-10-29T03:07:42.209Z	INFO	controller-runtime.metrics	metrics server is starting to listen	{"addr": "127.0.0.1:8080"}
+2020-10-29T03:07:42.210Z	INFO	controller-runtime.builder	Registering a mutating webhook	{"GVK": "music.example.io/v1, Kind=RockBand", "path": "/mutate-music-example-io-v1-rockband"}
+2020-10-29T03:07:42.211Z	INFO	controller-runtime.webhook	registering webhook	{"path": "/mutate-music-example-io-v1-rockband"}
+2020-10-29T03:07:42.211Z	INFO	controller-runtime.builder	Registering a validating webhook	{"GVK": "music.example.io/v1, Kind=RockBand", "path": "/validate-music-example-io-v1-rockband"}
+2020-10-29T03:07:42.211Z	INFO	controller-runtime.webhook	registering webhook	{"path": "/validate-music-example-io-v1-rockband"}
+2020-10-29T03:07:42.211Z	INFO	setup	starting manager
+I1029 03:07:42.212603       1 leaderelection.go:242] attempting to acquire leader lease  music-system/9f9c4fd4.example.io...
+2020-10-29T03:07:42.214Z	INFO	controller-runtime.manager	starting metrics server	{"path": "/metrics"}
+2020-10-29T03:07:42.308Z	INFO	controller-runtime.webhook.webhooks	starting webhook server
+2020-10-29T03:07:42.309Z	DEBUG	controller-runtime.manager	non-leader-election runnable finished	{"runnable type": "*webhook.Server"}
+2020-10-29T03:07:42.309Z	ERROR	setup	problem running manager	{"error": "open /tmp/k8s-webhook-server/serving-certs/tls.crt: no such file or directory"}
+github.com/go-logr/zapr.(*zapLogger).Error
+	/go/pkg/mod/github.com/go-logr/zapr@v0.1.0/zapr.go:128
+main.main
+	/workspace/main.go:85
+runtime.main
+	/usr/local/go/src/runtime/proc.go:203
 
 ```
-export IMG=quay.io/brito_rafa/music-controller:latest
-make docker-build # controller:latest is the default name - see Makefile
-kind load docker-image controller:latest --name=crd-dev
-make deploy IMG=controller:latest
+
+Solution: troubleshoot the `make deploy` and look for the yaml file under `config/certmanager/certificate.yaml`.
+
+### Lack of music-system namespace
+
+Kubebuilder and kustomize do not setup the controller namespace according.
+```bash
+make deploy IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
+(...)
+Error from server (NotFound): error when creating "STDIN": namespaces "music-system" not found
 ```
 
-
-Listing resources:
-
-```
-kubectl get api-resources
-```
-
-Listing preferred version:
-
-```
-kubectl get --raw /apis/music.example.io | jq -r
-```
-
-
-
-## Errors found during this development
+Solution: create the `music-system` namespace manually before deploying the controller.
 
 ### mutate=true at validation
 
@@ -472,6 +561,24 @@ Make deploy generated the following error:
 Error: no matches for OriginalId admissionregistration.k8s.io_v1beta1_ValidatingWebhookConfiguration|~X|validating-webhook-configuration; no matches for CurrentId admissionregistration.k8s.io_v1beta1_ValidatingWebhookConfiguration|~X|validating-webhook-configuration; failed to find unique target for patch admissionregistration.k8s.io_v1beta1_ValidatingWebhookConfiguration|validating-webhook-configuration
 ```
 
+### Controller running locally
+
+If you are testing the webhook locally using `make run`, you will need certs under the directory `/tmp/k8s-webhook-server/serving-certs`.
+
+Create and install the key/cert running:
+
+```
+openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out tls.crt -keyout tls.key
+# answer all the questions
+mkdir -p /tmp/k8s-webhook-server/serving-certs
+mv tls.* /tmp/k8s-webhook-server/serving-certs
+```
+
+During the execution of the controller, possible the webhook will complain to a different directory than /tmp/k8s-webhook-server/serving-certs .
+In this case, just copy the tsl.* files to the directory.
+
+It is possible that running locally the webhook is never called - that was my case. My webhook only worked properly once running as a pod on my cluster.
+In this case, you will need to deploy them on the cluster (see previous section).
 
 
 ## Multi-API
@@ -499,4 +606,16 @@ Edit the type files and pick one to be the (preferred version)[https://book.kube
 
 ```
 // +kubebuilder:storageversion
+```
+
+Listing resources:
+
+```
+kubectl get api-resources
+```
+
+Listing preferred version:
+
+```
+kubectl get --raw /apis/music.example.io | jq -r
 ```
