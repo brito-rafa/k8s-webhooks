@@ -1,28 +1,26 @@
-# First Example
+# First Example: A Single Version of an API Group with one Kind.
 
-A single version of a kind on an api group.
-
-As I mentioned before, this code is focused only to create a CRD/webhook/controller from scratch, not doing anything business-fancy.
-
+As I mentioned before, this code is focused only to create the combination of CRD/webhook/controller from scratch.
 We will do minimum code to update or instrument the CRD, but the focus is managing the schema changes of CRD and how webhook will help us. 
 
-Of course, you can use this tutorial to spring-board to a more serious controller. 
-For such, I recommend you to look at our other example https://github.com/embano1/codeconnect-vm-operator.
+But, of course, you can use this tutorial to spring-board to a more serious controller for your business needs. 
+In addition, I recommend you to look at our other controller example https://github.com/embano1/codeconnect-vm-operator.
+
+The final result of this code is under music/ subdirectory. You can use it as reference, but we will start from an empty directory.
 
 ## Scaffolding
 
 First step is using the kubebuilder scaffolding:
 
-```
+```bash
 mkdir music; cd music
 go mod init music
 kubebuilder init --domain example.io
 kubebuilder create api --group music --version v1 --kind RockBand
 # press y for both "Create Resource" and "Create Controller"
-kubebuilder create webhook --group music --version v1 --kind RockBand --defaulting --programmatic-validation
 ```
 
-It creates a directory structure. The final result of this code is under music/ subdirectory here.
+It creates a directory structure.
 
 ## Creating our own CRD business logic
 
@@ -191,20 +189,6 @@ Successfully tagged quay.io/brito_rafa/music-controller:single-gvk-v0.1
 ```
 
 Let's test the controller before coding any webhooks.
-For such, let's comment out the webhook call from the `main.go` .
-*Attention:* if you do not do this, you will be able to deploy the controller, but it will fail the execution (missing the certs).
-
-Lines to be commented out - for now:
-```go main.go
-        /*
-        if err = (&musicv1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
-                setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
-                os.Exit(1)
-        }
-        */
-
-```
-
 
 Run:
 
@@ -221,6 +205,7 @@ You might see an error of missing namespace `music-system`:
 Error from server (NotFound): error when creating "STDIN": namespaces "music-system" not found
 ```
 For some reason kubebuilder+kustomize fails to set the namespace correctly (it creates namespace `system` instead).
+
 Create the `music-system` namespace and try again:
 
 ```bash
@@ -278,7 +263,7 @@ For this demo, we came up with a couple silly rules just to make a point how to 
 
 Mutation: 
 1. if LeadSinger is not specified, set it as "TBD".
-2. if RockBand CR name is "beatles" and Lead Singer is "John", set it to "John Lennon" (disclaimer: some Beatles fans (including me) will argue The Beatles did not have "a" Lead Singer).
+2. if RockBand CR name is "beatles" and Lead Singer is "John", set it to "John Lennon" (disclaimer: some Beatles fans (including me) will argue The Beatles did not have "the" Lead Singer).
 
 Validation:
 1. We can't create RockBands CRs on "kube-system" namespace
@@ -288,13 +273,18 @@ Validation:
 
 ### Code
 
-Scaffolding should have created the file  `music/api/v1/rockband_webhook.go`.
+Let's do the scaffolding:
 
-But let's start with main.go first.
+```bash
+kubebuilder create webhook --group music --version v1 --kind RockBand --defaulting --programmatic-validation
+```
+
+Scaffolding should have created the file  `music/api/v1/rockband_webhook.go` AND edited `main.go`.
+
 
 #### main.go
 
-Let's reinstate the webhook call on main.go, otherwise the webhook will not run:
+Let's mak sure the following webhook call is on main.go, otherwise the webhook will not run:
 
 ```go main.go
 	if err = (&musicv1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
@@ -307,18 +297,258 @@ Let's reinstate the webhook call on main.go, otherwise the webhook will not run:
 
 This where your mutation and validation logic will reside.
 
+The default `music/api/v1/rockband_webhook.go` has multiple methods with kubebuilder tags.
 
-Code snippet for Mutator. Remember, this will execute for each CR request.
+Let's start with the mutator, which is the Default. This has priority than any other validator method and this will execute for each CR request.
+Note the `mutating=true` kubebuilder tag.
+This means the RockBand CR is mutable during this method. This is where you will want to setup all Spec fields with default values.
 
-Note that during validation calls, one CAN'T change fields, only generate errors - see the kubebuilder option mutating=false.
+In our example below, we set leadSinger as "TBD" if empty. And it sets "John Lennon" if leadSinger is "John" and CR name is "beatles".
+
+Note that in Default, there is no API error being returned.
+
+```go
+func (r *RockBand) Default() {
+	rockbandlog.Info("mutator default", "name", r.Name, "namespace", r.Namespace)
+
+	// TODO(user): fill in your defaulting logic.
+
+	// LeadSinger is an optional field on RockBandv1
+	// Adding "TBD" if it is empty
+	if r.Spec.LeadSinger == "" {
+		r.Spec.LeadSinger = "TBD"
+	}
+
+	// Silly mutation:
+	// if the rockband name is beatles and leadSinger is John, set it as John Lennon
+	if r.Name == "beatles" && r.Spec.LeadSinger == "John" {
+		r.Spec.LeadSinger = "John Lennon"
+	}
+}
+```
+
+Let's look the validator calls. There are three: creation, update and deletion.
+
+*Attention:* Note that during validation calls, one CAN'T change Spec fields (see the kubebuilder tag `mutating=false`). 
+
+The validator methods only generate API errors.
+
+Let's look at the creation validation, which forbids the creation of RockBand on `kube-system` namespace:
+
+```go
+func (r *RockBand) ValidateCreate() error {
+	rockbandlog.Info("validate create", "name", r.Name, "namespace", r.Namespace, "lead singer", r.Spec.LeadSinger)
+
+	// TODO(user): fill in your validation logic upon object creation.
+
+	var allErrs field.ErrorList
+
+	// Just an example of validation: one cannot create rockbands under kube-system namespace
+	if r.Namespace == "kube-system" {
+		err := field.Invalid(field.NewPath("metadata").Child("namespace"), r.Namespace, "is forbidden to have rockbands.")
+		allErrs = append(allErrs, err)
+	}
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(
+		schema.GroupKind{Group: "music.example.io", Kind: "RockBand"},
+		r.Name, allErrs)
+}
+```
+
+Let's look at the update validation. During update, "Ringo" is not allowed to be set as leadSinger if CR name is "beatles".
+The other validation is not let the user to change the leadSinger to "John" if CR name is "beatles"
+
+```go
+func (r *RockBand) ValidateUpdate(old runtime.Object) error {
+	rockbandlog.Info("validate update", "name", r.Name, "namespace", r.Namespace, "lead singer", r.Spec.LeadSinger)
+
+	// TODO(user): fill in your validation logic upon object update.
+
+	var allErrs field.ErrorList
+
+	// Disclaimer: The following condition will never be met because of the Default mutation
+	if r.Name == "beatles" && r.Spec.LeadSinger == "John" {
+		err := field.Invalid(field.NewPath("spec").Child("leadSinger"), r.Spec.LeadSinger, "has the shortname of the singer.")
+		allErrs = append(allErrs, err)
+	}
+
+	// Silly validation
+	if r.Name == "beatles" && r.Spec.LeadSinger == "Ringo" {
+		err := field.Invalid(field.NewPath("spec").Child("leadSinger"), r.Spec.LeadSinger, "was the drummer. Suggest you to pick John or Paul.")
+		allErrs = append(allErrs, err)
+	}
+
+	if len(allErrs) == 0 {
+		return nil
+	}
+
+	return apierrors.NewInvalid(
+		schema.GroupKind{Group: "music.example.io", Kind: "RockBand"},
+		r.Name, allErrs)
+}
+```
+
+At this time, you should be able to compile the code with the webhooks.
+
+Run:
+
+```bash
+make docker-build IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
+docker push quay.io/brito_rafa/music-controller:single-gvk-v0.1
+```
+
+#### Configuring Kubebuilder to Enable Webhook
+
+There are multiple places that you will need to set to tell kubebuilder+kustomize to deploy the webhooks.
+
+The main file is `config/default/kustomization.yaml` and you must uncomment all sections in regards `WEBHOOK` and `CERTMANAGER`.
+The final result should look like this [kustomization.yaml](/single-gvk/music/config/default/kustomization.yaml).
 
 ```
+# Adds namespace to all resources.
+namespace: music-system
+
+# Value of this field is prepended to the
+# names of all resources, e.g. a deployment named
+# "wordpress" becomes "alices-wordpress".
+# Note that it should also match with the prefix (text before '-') of the namespace
+# field above.
+namePrefix: music-
+
+# Labels to add to all resources and selectors.
+#commonLabels:
+#  someName: someValue
+
+bases:
+- ../crd
+- ../rbac
+- ../manager
+# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in 
+# crd/kustomization.yaml
+- ../webhook
+# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'. 'WEBHOOK' components are required.
+- ../certmanager
+# [PROMETHEUS] To enable prometheus monitor, uncomment all sections with 'PROMETHEUS'. 
+#- ../prometheus
+
+patchesStrategicMerge:
+  # Protect the /metrics endpoint by putting it behind auth.
+  # If you want your controller-manager to expose the /metrics
+  # endpoint w/o any authn/z, please comment the following line.
+- manager_auth_proxy_patch.yaml
+
+# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix including the one in 
+# crd/kustomization.yaml
+- manager_webhook_patch.yaml
+
+# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER'.
+# Uncomment 'CERTMANAGER' sections in crd/kustomization.yaml to enable the CA injection in the admission webhooks.
+# 'CERTMANAGER' needs to be enabled to use ca injection
+- webhookcainjection_patch.yaml
+
+# the following config is for teaching kustomize how to do var substitution
+vars:
+# [CERTMANAGER] To enable cert-manager, uncomment all sections with 'CERTMANAGER' prefix.
+- name: CERTIFICATE_NAMESPACE # namespace of the certificate CR
+  objref:
+    kind: Certificate
+    group: cert-manager.io
+    version: v1alpha2
+    name: serving-cert # this name should match the one in certificate.yaml
+  fieldref:
+    fieldpath: metadata.namespace
+- name: CERTIFICATE_NAME
+  objref:
+    kind: Certificate
+    group: cert-manager.io
+    version: v1alpha2
+    name: serving-cert # this name should match the one in certificate.yaml
+- name: SERVICE_NAMESPACE # namespace of the service
+  objref:
+    kind: Service
+    version: v1
+    name: webhook-service
+  fieldref:
+    fieldpath: metadata.namespace
+- name: SERVICE_NAME
+  objref:
+    kind: Service
+    version: v1
+    name: webhook-service
 ```
+
+
+Let's configure the `config/certmanager/certificate.yaml` for a self-signed issuer and a cert.
+Accept the defaults but they need to be added under a namespace, the example below, it is "music-system" (instead of the default "system"):
+
+```
+apiVersion: cert-manager.io/v1alpha2
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: music-system
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: serving-cert  # this name should match the one appeared in kustomizeconfig.yaml
+  namespace: music-system
+```
+
+
+Uncomment the `crd/kustomization.yaml` for the patches and certmanager
+
+```
+patchesStrategicMerge:
+# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
+# patches here are for enabling the conversion webhook for each CRD
+- patches/webhook_in_rockbands.yaml
+# +kubebuilder:scaffold:crdkustomizewebhookpatch
+
+# [CERTMANAGER] To enable webhook, uncomment all the sections with [CERTMANAGER] prefix.
+# patches here are for enabling the CA injection for each CRD
+- patches/cainjection_in_rockbands.yaml
+# +kubebuilder:scaffold:crdkustomizecainjectionpatch
+
+# the following config is for teaching kustomize how to do kustomization for CRDs.
+configurations:
+- kustomizeconfig.yaml
+```
+
+I had an issue where the `config/crd/patches/*yaml` were using apiextensions.k8s.io/v1beta1 instead of piextensions.k8s.io/v1. I had to manually edit the file.
+
+Here is the original error:
+
+```
+Error: accumulating resources: accumulateFile "accumulating resources from '../crd': '/Users/rbrito/go/src/music/config/crd' must resolve to a file", accumulateDirector: "recursed accumulation of path '/Users/rbrito/go/src/music/config/crd': no matches for OriginalId apiextensions.k8s.io_v1betav1
+```
+
+Another error, because the webhook was generated for v1beta1, the spec is .spec.conversion.webhook.clientconfig (not .spec.conversion.webclientconfig):
+
+```
+error: error validating "STDIN": error validating data: ValidationError(CustomResourceDefinition.spec.conversion): unknown field "webhookClientConfig" in io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceConversion; if you choose to ignore these errors, turn validation off with --validate=false
+```
+
+I want to test the next section testing the creation of the CR, so I will delete the current "beatles" CR:
+
+```bash
+$ kubectl delete rockband beatles
+rockband.music.example.io "beatles" deleted
+```
+
+
 ## Testing the webhook
 
 *Attention*: if you have not installed the cert-manager, the time is now.
 
 ### Creation
+
 
 I used the follow example to test my first mutation and validation:
 
@@ -450,65 +680,6 @@ Let's see the controller logs:
 
 
 
-#### Controller running on the Cluster
-
-Let's configure the `config/certmanager/certificate.yaml` for a self-signed issuer and a cert.
-Accept the defaults but they need to be added under a namespace, the example below, it is "music-system" (instead of the default "system"):
-
-```
-apiVersion: cert-manager.io/v1alpha2
-kind: Issuer
-metadata:
-  name: selfsigned-issuer
-  namespace: music-system
-spec:
-  selfSigned: {}
----
-apiVersion: cert-manager.io/v1alpha2
-kind: Certificate
-metadata:
-  name: serving-cert  # this name should match the one appeared in kustomizeconfig.yaml
-  namespace: music-system
-```
-
-Now we need to configure our controller to use the cert under the music-system namespace.
-Go to `config/default/kustomization.yaml`
-
-```
-```
-
-Uncomment the `crd/kustomization.yaml` for the patches and certmanager
-
-```
-patchesStrategicMerge:
-# [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
-# patches here are for enabling the conversion webhook for each CRD
-- patches/webhook_in_rockbands.yaml
-# +kubebuilder:scaffold:crdkustomizewebhookpatch
-
-# [CERTMANAGER] To enable webhook, uncomment all the sections with [CERTMANAGER] prefix.
-# patches here are for enabling the CA injection for each CRD
-- patches/cainjection_in_rockbands.yaml
-# +kubebuilder:scaffold:crdkustomizecainjectionpatch
-
-# the following config is for teaching kustomize how to do kustomization for CRDs.
-configurations:
-- kustomizeconfig.yaml
-```
-
-I had an issue where the `config/crd/patches/*yaml` were using apiextensions.k8s.io/v1beta1 instead of piextensions.k8s.io/v1. I had to manually edit the file.
-
-Here is the original error:
-
-```
-Error: accumulating resources: accumulateFile "accumulating resources from '../crd': '/Users/rbrito/go/src/music/config/crd' must resolve to a file", accumulateDirector: "recursed accumulation of path '/Users/rbrito/go/src/music/config/crd': no matches for OriginalId apiextensions.k8s.io_v1betav1
-```
-
-Another error, because the webhook was generated for v1beta1, the spec is .spec.conversion.webhook.clientconfig (not .spec.conversion.webclientconfig):
-
-```
-error: error validating "STDIN": error validating data: ValidationError(CustomResourceDefinition.spec.conversion): unknown field "webhookClientConfig" in io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceConversion; if you choose to ignore these errors, turn validation off with --validate=false
-```
 
 ## Common Errors
 
