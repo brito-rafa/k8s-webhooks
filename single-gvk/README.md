@@ -256,10 +256,20 @@ status:
 
 Note that we have a status field now. Let's now code mutator and validator webhooks.
 
+I want to test the next section testing the creation of the CR, so I will delete the current "beatles" CR:
+
+```bash
+$ kubectl delete rockband beatles
+rockband.music.example.io "beatles" deleted
+```
 
 ## CRD Mutation and Validation
 
 For this demo, we came up with a couple silly rules just to make a point how to mutate and validate RockBands objects.
+
+**ATTENTION:** One can enable some validation part of the API Server using kubebuilder tags `+kubebuilder:validation:Required`.
+There is one academic controller we wrote that uses as example [here](https://github.com/embano1/codeconnect-vm-operator/blob/main/api/v1alpha1/vmgroup_types.go).
+The validations in this section are for academic purposes.
 
 Mutation: 
 1. if LeadSinger is not specified, set it as "TBD".
@@ -481,16 +491,16 @@ vars:
     name: webhook-service
 ```
 
+***ATTENTION:***
 
-Let's configure the `config/certmanager/certificate.yaml` for a self-signed issuer and a cert.
-Accept the defaults but they need to be added under a namespace, the example below, it is "music-system" (instead of the default "system"):
+You will need to configure the `config/certmanager/certificate.yaml` (they are for the self-signed issuer and a cert) to be created under a namespace, the example below, I set to `music-system` (instead of the default "system"), which is the same namespace as our controller will run:
 
 ```
 apiVersion: cert-manager.io/v1alpha2
 kind: Issuer
 metadata:
   name: selfsigned-issuer
-  namespace: music-system
+  namespace: music-system  ### <<<<<<<< HERE ##
 spec:
   selfSigned: {}
 ---
@@ -498,13 +508,12 @@ apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
 metadata:
   name: serving-cert  # this name should match the one appeared in kustomizeconfig.yaml
-  namespace: music-system
+  namespace: music-system ### <<<<<<<< HERE ###
 ```
 
+Uncomment the `config/crd/kustomization.yaml` for the patches and certmanager as example [here](/single-gvk/music/config/crd/kustomization.yaml).
 
-Uncomment the `crd/kustomization.yaml` for the patches and certmanager
-
-```
+```bash
 patchesStrategicMerge:
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
@@ -521,40 +530,74 @@ configurations:
 - kustomizeconfig.yaml
 ```
 
-I had an issue where the `config/crd/patches/*yaml` were using apiextensions.k8s.io/v1beta1 instead of piextensions.k8s.io/v1. I had to manually edit the file.
+***ATTENTION***:
 
-Here is the original error:
+I had multiple issues running `make deploy` because  `config/crd/patches/*yaml` were using apiextensions.k8s.io/v1beta1 instead of apiextensions.k8s.io/v1. I had to manually edit the files to follow the correct API Group version. 
+You can see my tweaked files [cainjection_in_rockbands.yaml](/single-gvk/music/config/crd/patches/cainjection_in_rockbands.yaml) and [webhook_in_rockbands.yaml](/single-gvk/music/config/crd/patches/webhook_in_rockbands.yaml).
+
+Use them instead the default. See "Common Errors" section for the errors messages.
+
+After all these changes, we are ready to deploy the controller with the webhook.
+
+
+**Attention**: if you have not installed the cert-manager, the time is now, otherwise `make deploy` will fail:
+
+Installing cert-manager:
 
 ```
-Error: accumulating resources: accumulateFile "accumulating resources from '../crd': '/Users/rbrito/go/src/music/config/crd' must resolve to a file", accumulateDirector: "recursed accumulation of path '/Users/rbrito/go/src/music/config/crd': no matches for OriginalId apiextensions.k8s.io_v1betav1
+kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
 ```
 
-Another error, because the webhook was generated for v1beta1, the spec is .spec.conversion.webhook.clientconfig (not .spec.conversion.webclientconfig):
+Deploying the controller with webhook and checking the cert:
 
 ```
-error: error validating "STDIN": error validating data: ValidationError(CustomResourceDefinition.spec.conversion): unknown field "webhookClientConfig" in io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceConversion; if you choose to ignore these errors, turn validation off with --validate=false
+$ make deploy IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
+(...)
+
+# check the issuers and certificates under music-system
+
+$ kubectl get issuers,certificates -n music-system
+NAME                                             READY   AGE
+issuer.cert-manager.io/music-selfsigned-issuer   True    49s
+
+NAME                                             READY   SECRET                AGE
+certificate.cert-manager.io/music-serving-cert   True    webhook-server-cert   49s
 ```
 
-I want to test the next section testing the creation of the CR, so I will delete the current "beatles" CR:
+Check the controller logs, note the lines with `controller-runtime.webhook.webhooks`, `controller-runtime.webhook`:
 
 ```bash
-$ kubectl delete rockband beatles
-rockband.music.example.io "beatles" deleted
+$ kubectl logs music-controller-manager-758bfc756f-6qf8n  -n music-system manager
+2020-10-29T04:53:36.701Z	INFO	controller-runtime.metrics	metrics server is starting to listen	{"addr": "127.0.0.1:8080"}
+2020-10-29T04:53:36.701Z	INFO	controller-runtime.builder	Registering a mutating webhook	{"GVK": "music.example.io/v1, Kind=RockBand", "path": "/mutate-music-example-io-v1-rockband"}
+2020-10-29T04:53:36.701Z	INFO	controller-runtime.webhook	registering webhook	{"path": "/mutate-music-example-io-v1-rockband"}
+2020-10-29T04:53:36.701Z	INFO	controller-runtime.builder	Registering a validating webhook	{"GVK": "music.example.io/v1, Kind=RockBand", "path": "/validate-music-example-io-v1-rockband"}
+2020-10-29T04:53:36.701Z	INFO	controller-runtime.webhook	registering webhook	{"path": "/validate-music-example-io-v1-rockband"}
+2020-10-29T04:53:36.701Z	INFO	setup	starting manager
+I1029 04:53:36.702772       1 leaderelection.go:242] attempting to acquire leader lease  music-system/9f9c4fd4.example.io...
+2020-10-29T04:53:36.703Z	INFO	controller-runtime.webhook.webhooks	starting webhook server
+2020-10-29T04:53:36.705Z	INFO	controller-runtime.certwatcher	Updated current TLS certificate
+2020-10-29T04:53:36.705Z	INFO	controller-runtime.webhook	serving webhook server	{"host": "", "port": 9443}
+2020-10-29T04:53:36.795Z	INFO	controller-runtime.manager	starting metrics server	{"path": "/metrics"}
+2020-10-29T04:53:36.800Z	INFO	controller-runtime.certwatcher	Starting certificate watcher
+I1029 04:53:54.119549       1 leaderelection.go:252] successfully acquired lease music-system/9f9c4fd4.example.io
+2020-10-29T04:53:54.119Z	DEBUG	controller-runtime.manager.events	Normal	{"object": {"kind":"ConfigMap","namespace":"music-system","name":"9f9c4fd4.example.io","uid":"727f114e-e7f3-4a79-b01f-82a2db2c1e8c","apiVersion":"v1","resourceVersion":"33640"}, "reason": "LeaderElection", "message": "music-controller-manager-758bfc756f-6qf8n_bbc01b6b-df24-4192-8809-55919c6b2bec became leader"}
+2020-10-29T04:53:54.120Z	INFO	controller-runtime.controller	Starting EventSource	{"controller": "rockband", "source": "kind source: /, Kind="}
+2020-10-29T04:53:54.220Z	INFO	controller-runtime.controller	Starting Controller	{"controller": "rockband"}
+2020-10-29T04:53:54.221Z	INFO	controller-runtime.controller	Starting workers	{"controller": "rockband", "worker count": 1}
 ```
-
 
 ## Testing the webhook
 
-*Attention*: if you have not installed the cert-manager, the time is now.
-
 ### Creation
 
+Let's use the same example to test my first mutation:
 
-I used the follow example to test my first mutation and validation:
+```bash
+$ kubectl create -f config/samples/music_v1_rockband.yaml -n default
+rockband.music.example.io/beatles created
 
-```
-$ kubectl create -f beatles.yaml -n default
-$ cat beatles.yaml
+$ cat config/samples/music_v1_rockband.yaml
 apiVersion: music.example.io/v1
 kind: RockBand
 metadata:
@@ -568,7 +611,7 @@ spec:
 
 Controller logs during creation:
 
-```
+```bash
 2020-10-28T21:36:09.478Z        DEBUG   controller-runtime.webhook.webhooks     received request    {"webhook": "/mutate-music-example-io-v1-rockband", "UID": "ae7f50b2-df85-41fc-9460-9fdde49882f0", "kind": "music.example.io/v1, Kind=RockBand", "resource": {"group":"music.example.io","version":"v1","resource":"rockbands"}}
 2020-10-28T21:36:09.478Z        INFO    rockband-resource       mutator default {"name": "beatles", "namespace": "default"}
 2020-10-28T21:36:09.480Z        DEBUG   controller-runtime.webhook.webhooks     wrote response  {"webhook": "/mutate-music-example-io-v1-rockband", "UID": "ae7f50b2-df85-41fc-9460-9fdde49882f0", "allowed": true, "result": {}, "resultError": "got runtime.Object without object metadata: &Status{ListMeta:ListMeta{SelfLink:,ResourceVersion:,Continue:,RemainingItemCount:nil,},Status:,Message:,Reason:,Details:nil,Code:200,}"}
@@ -583,8 +626,8 @@ Controller logs during creation:
 
 Result of the CR (plase note the leadSinger as John Lennon):
 
-```
- kubectl get rockband beatles -o yaml
+```bash
+$ kubectl get rockband beatles -n default -o yaml
 apiVersion: music.example.io/v1
 kind: RockBand
 metadata:
@@ -606,7 +649,7 @@ status:
 Let's test the validation creation now:
 
 ```
-$ kubectl create -f beatles -n kube-system
+$ kubectl create -f config/samples/music_v1_rockband.yaml -n kube-system
 Error from server (RockBand.music.example.io "beatles" is invalid: metadata.namespace: Invalid value: "kube-system": is forbidden to have rockbands.): error when creating "music_v1_rockband.yaml": admission webhook "vrockband.kb.io" denied the request: RockBand.music.example.io "beatles" is invalid: metadata.namespace: Invalid value: "kube-system": is forbidden to have rockbands.
 ```
 
@@ -621,7 +664,6 @@ Here are the controller logs for the creation validation:
 2020-10-28T21:40:32.090Z        DEBUG   controller-runtime.webhook.webhooks     wrote response  {"webhook": "/validate-music-example-io-v1-rockband", "UID": "2e6212dc-8bd6-468a-92e2-2a078eb41122", "allowed": false, "result": {}, "resultError": "got runtime.Object without object metadata: &Status{ListMeta:ListMeta{SelfLink:,ResourceVersion:,Continue:,RemainingItemCount:nil,},Status:,Message:,Reason:RockBand.music.example.io \"beatles\" is invalid: metadata.namespace: Invalid value: \"kube-system\": is forbidden to have rockbands.,Details:nil,Code:403,}"}
 ```
 
-
 Let's test the update validation now. If you remember, the code does not let you to setup leadSinger as "John" if the rockband is "beatles".
 
 ```
@@ -634,7 +676,7 @@ spec:
 rockband.music.example.io/beatles edited
 ```
 
-Wait. It let me. Why? Let's see the controller logs:
+**Wait**: The validation let me. Why? Let's see the controller logs:
 
 ```
 2020-10-28T21:44:32.065Z        DEBUG   controller-runtime.webhook.webhooks     received request    {"webhook": "/mutate-music-example-io-v1-rockband", "UID": "dd68946a-9b9f-4b4b-bec2-41db5116da17", "kind": "music.example.io/v1, Kind=RockBand", "resource": {"group":"music.example.io","version":"v1","resource":"rockbands"}}
@@ -677,11 +719,14 @@ Let's see the controller logs:
 2020-10-28T22:07:26.566Z        DEBUG   controller-runtime.webhook.webhooks     wrote response  {"webhook": "/validate-music-example-io-v1-rockband", "UID": "bb035ace-c3f1-4531-9bf3-8bd6cdcdf6f7", "allowed": false, "result": {}, "resultError": "got runtime.Object without object metadata: &Status{ListMeta:ListMeta{SelfLink:,ResourceVersion:,Continue:,RemainingItemCount:nil,},Status:,Message:,Reason:RockBand.music.example.io \"beatles\" is invalid: spec.leadSinger: Invalid value: \"Ringo\": was the drummer. Suggest you to pick John or Paul.,Details:nil,Code:403,}"}
 ```
 
+With these tests, we conclude the sample code for a single version of the API Group with one Kind.
 
-
+Next, we will test with two versions of API Groups and webhook to mutate them.
 
 
 ## Common Errors
+
+This section is a collection of the errors that I encountered during the creation of the webhook.
 
 ### Lack of certs or cert-manager
 
@@ -711,11 +756,13 @@ runtime.main
 
 ```
 
-Solution: troubleshoot the `make deploy` and look for the yaml file under `config/certmanager/certificate.yaml`.
+Solution: troubleshoot the `make deploy` and look for the yaml file under `config/certmanager/certificate.yaml`. Make sure it is the same namespace. Make sure cert-manager is installed and running.
+
 
 ### Lack of music-system namespace
 
 Kubebuilder and kustomize do not setup the controller namespace according.
+
 ```bash
 make deploy IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
 (...)
@@ -724,12 +771,29 @@ Error from server (NotFound): error when creating "STDIN": namespaces "music-sys
 
 Solution: create the `music-system` namespace manually before deploying the controller.
 
-### mutate=true at validation
+### mutating=true at validation
 
-Make deploy generated the following error:
+At validation, do not change kubebuilder tag `mutating=true`, otherwise `make deploy` will generate the following error:
 
 ```
 Error: no matches for OriginalId admissionregistration.k8s.io_v1beta1_ValidatingWebhookConfiguration|~X|validating-webhook-configuration; no matches for CurrentId admissionregistration.k8s.io_v1beta1_ValidatingWebhookConfiguration|~X|validating-webhook-configuration; failed to find unique target for patch admissionregistration.k8s.io_v1beta1_ValidatingWebhookConfiguration|validating-webhook-configuration
+```
+
+### Inconsistent apiextensions.k8s.io
+
+By default, kubebuilder+kustomize were using apiextensions.k8s.io/v1beta1 instead of apiextensions.k8s.io/v1 on `config/crd/patches/*yaml`. 
+I had to manually edit the files to match the schema of apiextensions.k8s.io/v1.
+
+Here is the original error without edits:
+
+```
+Error: accumulating resources: accumulateFile "accumulating resources from '../crd': '/Users/rbrito/go/src/music/config/crd' must resolve to a file", accumulateDirector: "recursed accumulation of path '/Users/rbrito/go/src/music/config/crd': no matches for OriginalId apiextensions.k8s.io_v1betav1
+```
+
+Another error, because the webhook was generated for v1beta1, the spec is .spec.conversion.webhook.clientconfig (not .spec.conversion.webclientconfig):
+
+```
+error: error validating "STDIN": error validating data: ValidationError(CustomResourceDefinition.spec.conversion): unknown field "webhookClientConfig" in io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1.CustomResourceConversion; if you choose to ignore these errors, turn validation off with --validate=false
 ```
 
 ### Controller running locally
@@ -750,43 +814,3 @@ In this case, just copy the tsl.* files to the directory.
 
 It is possible that running locally the webhook is never called - that was my case. My webhook only worked properly once running as a pod on my cluster.
 In this case, you will need to deploy them on the cluster (see previous section).
-
-
-## Multi-API
-
-kubebuilder init --domain example.io
-kubebuilder create api --group music --version v1alpha1 --kind RockBand
-kubebuilder create api --group music --version v1 --kind RockBand
-kubebuilder create webhook --group music --version v1 --kind RockBand --defaulting --programmatic-validation
-```
-
-Edit the type files and pick one to be the (preferred version)[https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions]:
-
-```
-// +kubebuilder:storageversion
-```
-
-On your preferred version api directory, you should have rockband_convert.go.
-For each other supported version, you will need functions ConvertTo and ConvertFrom functions. They should be rockband_conversion.go.
-
-
-References:
-https://book.kubebuilder.io/multiversion-tutorial/tutorial.html
-
-Edit the type files and pick one to be the (preferred version)[https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions]:
-
-```
-// +kubebuilder:storageversion
-```
-
-Listing resources:
-
-```
-kubectl get api-resources
-```
-
-Listing preferred version:
-
-```
-kubectl get --raw /apis/music.example.io | jq -r
-```
