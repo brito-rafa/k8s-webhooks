@@ -63,7 +63,7 @@ CRD_OPTIONS ?= "crd:preserveUnknownFields=false,crdVersions=v1,trivialVersions=t
 
 Generate the CRD running:
 ```
-make manifests && make generate
+$ make manifests && make generate
 ```
 
 If you have issues, please refer to the original code of this directory.
@@ -74,13 +74,17 @@ If you apply this files as is on your cluster, you will deploy the CRD.
 Alternatively, you can run:
 
 ```
-make install
+$ make install
+kustomize build config/crd | kubectl apply -f -
+customresourcedefinition.apiextensions.k8s.io/rockbands.music.example.io created
 ```
 
 Once installed, you can check the CRDs on your cluster running:
 
 ```
-kubectl get crds
+$ kubectl get crds
+NAME                         CREATED AT
+rockbands.music.example.io   2020-10-29T02:37:21Z
 ```
 
 Listing specific versions of the object:
