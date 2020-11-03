@@ -11,17 +11,44 @@ The final result of this code is under [single-gvk/music](/single-gvk/music) sub
 For the impatients who want to see the final result without running all steps:
 
 ```bash
-# install the cert-manager then
+# Remember to install the cert-manager first
+# kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
+
+# install the controller and CRDs
 $ kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/single-gvk/single-gvk-v0.1.yaml
 
+# check the controller
 $ kubectl get pods -n music-system
+
 $ kubectl get crds
+
+# create a CR
+$ kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/single-gvk/music/config/samples/music_v1_rockband.yaml
+rockband.music.example.io/beatles created
+
+# list the CRs
+$ $ kubectl get rockbands -A -o yaml
+apiVersion: v1
+items:
+- apiVersion: music.example.io/v1
+  kind: RockBand
+  metadata:
+(...)
+    name: beatles
+    namespace: default
+(...)
+  spec:
+    genre: 60s rock
+    leadSinger: John Lennon
+    numberComponents: 4
+  status:
+    lastPlayed: "2020"
 ```
 
  The file [single-gvk-v0.1.yaml](/single-gvk/single-gvk-v0.1.yaml) points to the controller docker image quay.io/brito_rafa/music-controller:single-gvk-v0.1 .
  ```
 
-For the step-by-step, follow the next sections.
+For the step-by-step to create all the above, follow the next sections.
 
 ## Scaffolding
 

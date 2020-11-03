@@ -36,11 +36,23 @@ type RockBandSpec struct {
  ``` bash
  # ONLY IF YOU HAVE NOT DONE SO
  # cert-manager is required for any kubebuilder-created webhook
- $ kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
+ # $ kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
 
- # deploying multiple-gvk music controller and CRDs
+ # deploying multiple-gvk music controller and CRD
  $ kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/multiple-gvk/multiple-gvk-v0.1.yaml
+
+ # checking existent CRs with the v1alpha1 API
+ $ kubectl get rockbands.v1alpha1.music.example.io -A -o yaml
+ (...)
+ - apiVersion: music.example.io/v1alpha1
+  kind: RockBand
+  metadata:
+    annotations:
+      rockbands.v1.music.example.io/leadSinger: John Lennon
+    name: beatles
  ```
+
+Follow the next sections for the step-by-step.
 
 
 ## Creating a second API Group version with kubebuilder
