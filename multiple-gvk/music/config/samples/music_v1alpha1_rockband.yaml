@@ -1,7 +1,8 @@
 apiVersion: music.example.io/v1alpha1
 kind: RockBand
 metadata:
-  name: rockband-sample
+  name: pearljam
 spec:
   # Add fields here
-  foo: bar
+  genre: Grunge
+  numberComponents: 5

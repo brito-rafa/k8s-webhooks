@@ -24,11 +24,16 @@ At this time, you need to define two other things on your API Groups:
 
 ## Creating a second API Group version with kubebuilder
 
-Run the following command:
+Run the following commands:
 
 ```
-kubebuilder create api --group music --version v1alpha1 --kind RockBand
-# answer "y" for "Create Resource" and "n" for the "Create Resource"
+$ kubebuilder create api --group music --version v1alpha1 --kind RockBand --resource=true --controller=false
+
+$ kubebuilder create webhook --group music --version v1alpha1 --kind RockBand --conversion
+Writing scaffold for you to edit...
+Webhook server has been set up for you.
+You need to implement the conversion.Hub and conversion.Convertible interfaces for your CRD types.
+api/v1alpha1/rockband_webhook.go
 ```
 
 You now should see a second directory under `music/api` with the version `v1alpha1`.
@@ -55,8 +60,12 @@ type RockBandStatus struct {
 Edit the type files and pick `v1` to be the [preferred version](https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions):
 
 
-``` go
+``` go v1
 // +kubebuilder:storageversion
+
+// RockBand is the Schema for the rockbands API
+type RockBand struct {
+	metav1.TypeMeta   `json:",inline"`
 ```
 
 Test the introduction of `v1alpha` changes running the following:
@@ -147,9 +156,25 @@ $ kubectl get crd rockbands.music.example.io -o yaml
 
 ### Coding API Group conversion
 
-Kubebuilder book reference: https://book.kubebuilder.io/multiversion-tutorial/conversion.html
+- `main.go`
 
-Create the following files:
+Because of the command `kubebuilder create webhook ... --conversion`, your `main.go` should have a second `SetupWebhookWithManager` call, this time to the RockBandv1alpha`:
+
+```go main.go
+
+	if err = (&musicv1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
+		os.Exit(1)
+	}
+	if err = (&musicv1alpha1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
+		os.Exit(1)
+	}
+
+```
+
+Now, we need to write code for the conversion using the [Kubebuilder book references](https://book.kubebuilder.io/multiversion-tutorial/conversion.html).
+
 
 Under preferred version api directory, you will need the Hub
 
@@ -202,11 +227,12 @@ make deploy IMG=quay.io/brito_rafa/music-controller:multiple-gvk-v0.1
 ```
 
 
-## Common Errors during this code
+## Common Errors Found during this code
 
 
 ### webhook-service not found
 
+Error: 
 ```
 $ kubectl get rockbands.v1alpha1.music.example.io -o yaml
 apiVersion: v1
@@ -218,7 +244,67 @@ metadata:
 Error from server: conversion webhook for music.example.io/v1alpha1, Kind=RockBandList failed: Post https://webhook-service.system.svc:443/convert?timeout=30s: service "webhook-service" not found
 ```
 
+Solution: bad `webhook_in_rockbands.yaml` - I had to forcily put the correct namespace `music-system` on this file. The origin of this bug is due to the kubebuilder was creating files with crd v1beta1 extensions.
 
+``` yaml
+        service:
+          namespace: music-system     # <<<<< FIX
+          name: music-webhook-service #<<<<< FIX
+          path: /convert
+```
+
+
+### No v1alpha1 webhook
+
+Solution: the main.go was missing the `(&musicv1alpha1.RockBand{}).SetupWebhookWithManager`  - lack of running the `kubectl create webhook .... --conversion`
+
+The correct logs should look like this:
+
+```
+2020-11-02T22:28:04.016Z        INFO    controller-runtime.webhook      registering webhook     {"path": "/convert"}
+2020-11-02T22:28:04.016Z        INFO    controller-runtime.builder      conversion webhook enabled      {"object": {"metadata":{"creationTimestamp":null},"spec":{"genre":"","numberComponents":0,"leadSinger":""},"status":{"lastPlayed":""}}}
+2020-11-02T22:28:04.017Z        INFO    controller-runtime.builder      skip registering a mutating webhook, admission.Defaulter interface is not implemented {"GVK": "music.example.io/v1alpha1, Kind=RockBand"}
+2020-11-02T22:28:04.017Z        INFO    controller-runtime.builder      skip registering a validating webhook, admission.Validator interface is not implemented       {"GVK": "music.example.io/v1alpha1, Kind=RockBand"}
+```
+
+### Convert Object Panic
+
+Solution: check your ConvertTo/From code. The ObjectMeta must exist, the annotation field is not well coded, etc.
+
+Error:
+```
+2020-11-02T22:55:50.172Z        DEBUG   controller-runtime.webhook.webhooks     wrote response       {"webhook": "/validate-music-example-io-v1-rockband", "UID": "06c0e871-1200-40e4-a2ba-ced5a12c827d", "allowed": true, "result": {}, "resultError": "got runtime.Object without object metadata: &Status{ListMeta:ListMeta{SelfLink:,ResourceVersion:,Continue:,RemainingItemCount:nil,},Status:,Message:,Reason:,Details:nil,Code:200,}"}
+2020/11/02 22:55:50 http: panic serving 10.244.0.1:54282: assignment to entry in nil map
+goroutine 412 [running]:
+net/http.(*conn).serve.func1(0xc000122780)
+        /usr/local/go/src/net/http/server.go:1795 +0x139
+panic(0x13d7bc0, 0x172a4e0)
+        /usr/local/go/src/runtime/panic.go:679 +0x1b2
+music/api/v1alpha1.(*RockBand).ConvertFrom(0xc0000f1400, 0x1770820, 0xc0002d8580, 0x1770820, 0xc0002d8580)
+        /workspace/api/v1alpha1/rockband_conversion.go:24 +0xc1
+sigs.k8s.io/controller-runtime/pkg/webhook/conversion.(*Webhook).convertObject(0xc0003a1430, 0x174ba20, 0xc0002d8580, 0x174baa0, 0xc0000f1400, 0x174baa0, 0xc0000f1400)
+        /go/pkg/mod/sigs.k8s.io/controller-runtime@v0.5.0/pkg/webhook/conversion/conversion.go:142 +0x7bc
+sigs.k8s.io/controller-runtime/pkg/webhook/conversion.(*Webhook).handleConvertRequest(0xc0003a1430, 0xc0004f3580, 0xc000547fb0, 0x0, 0x0)
+        /go/pkg/mod/sigs.k8s.io/controller-runtime@v0.5.0/pkg/webhook/conversion/conversion.go:107 +0x1f8
+sigs.k8s.io/controller-runtime/pkg/webhook/conversion.(*Webhook).ServeHTTP(0xc0003a1430, 0x1770b20, 0xc00064c1c0, 0xc00050aa00)
+        /go/pkg/mod/sigs.k8s.io/controller-runtime@v0.5.0/pkg/webhook/conversion/conversion.go:74 +0x10b
+sigs.k8s.io/controller-runtime/pkg/webhook.instrumentedHook.func1(0x1770b20, 0xc00064c1c0, 0xc00050aa00)
+        /go/pkg/mod/sigs.k8s.io/controller-runtime@v0.5.0/pkg/webhook/server.go:123 +0xfc
+net/http.HandlerFunc.ServeHTTP(0xc000616b70, 0x1770b20, 0xc00064c1c0, 0xc00050aa00)
+        /usr/local/go/src/net/http/server.go:2036 +0x44
+net/http.(*ServeMux).ServeHTTP(0xc000343f00, 0x1770b20, 0xc00064c1c0, 0xc00050aa00)
+        /usr/local/go/src/net/http/server.go:2416 +0x1bd
+net/http.serverHandler.ServeHTTP(0xc0001aa460, 0x1770b20, 0xc00064c1c0, 0xc00050aa00)
+        /usr/local/go/src/net/http/server.go:2831 +0xa4
+net/http.(*conn).serve(0xc000122780, 0x17750a0, 0xc00063af40)
+        /usr/local/go/src/net/http/server.go:1919 +0x875
+created by net/http.(*Server).Serve
+        /usr/local/go/src/net/http/server.go:2957 +0x384
+2020-11-02T22:55:50.241Z        INFO    controllers.RockBand    received reconcile request for "beatles" (namespace: "default")      {"rockband": "default/beatles"}
+2020-11-02T22:55:50.248Z        DEBUG   controller-runtime.controller   Successfully Reconciled      {"controller": "rockband", "request": "default/beatles"}
+2020-11-02T22:55:50.248Z        INFO    controllers.RockBand    received reconcile request for "beatles" (namespace: "default")      {"rockband": "default/beatles"}
+2020-11-02T22:55:50.248Z        DEBUG   controller-runtime.controller   Successfully Reconciled      {"controller": "rockband", "request": "default/beatles"}
+```
 
 
 
