@@ -7,15 +7,6 @@ The example here is a great starting point for you to learn how to validate and 
 
 ## What are We Trying to Achieve?
 
-The code and step-by-step here are focused in how to setup from scratch the whole combination CRD/CR/webhook/controller.
-
-One can just create CRDs and Custom Resources (CRs) on a k8s cluster, but they will do not perform anything without a controller with reconciling code and webhooks (required for mutation and validation).
-
-The controller itself in this example does not have any busines logic but you will learn the validation and the mutator to support multiple [API Group Versions](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning) using kubebuilder. One use case for the mutator webhook is a CRD in production that require a new schema and you will need to roll out the new schema while supporting the old schema. We will see how this is achievable using webhooks and annotations.
-
-
-I created this example to aid the coding of [Project Velero to support multiple API Groups during backup and restore](https://github.com/vmware-tanzu/velero/issues/2551).
-
 The sample CRD is named `rockbands.music.example.io` and the controller will be called `music`.
 
 Our example sample CRD:
@@ -25,6 +16,12 @@ Our example sample CRD:
 - versions: v1 and v1alpha1
 - `RockBandv1` : Fields `Spec.Genre`, `Spec.NumberComponents`, `Spec.LeadSinger` and `Status.LastPlayed`
 - `RockBandv1alpha1` : Fields `Spec.Genre`, `Spec.NumberComponents`, and `Status.LastPlayed`
+
+I created this example to aid the coding of [Project Velero to support multiple API Groups during backup and restore](https://github.com/vmware-tanzu/velero/issues/2551).
+
+The controller itself in this example does not have any busines logic but you will learn the validation and the mutator to support multiple [API Group Versions](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning) using kubebuilder. 
+
+You will learn how to create the controller and most of all, a mutator webhook. This is handy in case you already have a CRD in production that require a new schema and you will need to roll out the new schema while supporting the old schema. We will see how this is achievable using webhooks and annotations.
 
 The controller will present the CRs back and forth between versions `v1` and `v1alpha1`.
 
