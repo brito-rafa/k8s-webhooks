@@ -6,10 +6,22 @@ We will do minimum code to update or instrument the CRD, but the focus is managi
 But, of course, you can use this tutorial to spring-board to a more serious controller for your business needs. 
 In addition, I recommend you to look at our other controller example https://github.com/embano1/codeconnect-vm-operator.
 
-The final result of this code is under music/ subdirectory. You can use it as reference, but we will start from an empty directory.
+The final result of this code is under [single-gvk/music](/single-gvk/music) subdirectory. You can use it as reference, but we will start from an empty directory.
 
-For the impatients who want to see the final result without running these steps: the file is [rockband-music-controller-v1.yaml](/single-gvk/rockband-music-controller-v1.yaml) using the controller docker image quay.io/brito_rafa/music-controller:single-gvk-v0.1 .
+For the impatients who want to see the final result without running all steps:
 
+```bash
+# install the cert-manager then
+$ kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/single-gvk/single-gvk-v0.1.yaml
+
+$ kubectl get pods -n music-system
+$ kubectl get crds
+```
+
+ The file [single-gvk-v0.1.yaml](/single-gvk/single-gvk-v0.1.yaml) points to the controller docker image quay.io/brito_rafa/music-controller:single-gvk-v0.1 .
+ ```
+
+For the step-by-step, follow the next sections.
 
 ## Scaffolding
 
@@ -48,8 +60,10 @@ type RockBandStatus struct {
 }
 ```
 
-As you can see, this is really a simple and silly example. RockBand has genre, number of components and lead singer as part of the Spec struct.
-And they are all optional. On Status struct, I decided to add on arbitrarily field called lastPlayed.
+As you can see, this is really a simple and silly example. RockBand has genre, number of components and lead singer as part of the `Spec` struct.
+
+And they are all optional. On `Status` struct, I decided to add on arbitrarily field called lastPlayed.
+
 In this example, the Status field does not have a Spec counterpart. In real world, the Spec and Status fields are similar and controller reconciles them.
 
 We want to use the latest CRD features, for such, please edit `Makefile` and set to the following line:
@@ -58,7 +72,7 @@ We want to use the latest CRD features, for such, please edit `Makefile` and set
 CRD_OPTIONS ?= "crd:preserveUnknownFields=false,crdVersions=v1,trivialVersions=true"
 ```
 
-*Attention*: I had issues with the `Makefile` default CRD line, so make sure you change to the above.
+**Attention**: I had issues with the `Makefile` default CRD line, so make sure you change to the above.
 
 ## Generating and Installing the CRD
 
@@ -70,7 +84,7 @@ $ make manifests && make generate
 
 If you have issues, please refer to the original code of this directory.
 
-Now inspect the file `config/crd/bases/music.example.io_rockbands.yaml`. 
+Now inspect the file `music/config/crd/bases/music.example.io_rockbands.yaml`. 
 If you apply this files as is on your cluster, you will deploy the CRD.
 
 Alternatively, you can run:
@@ -92,7 +106,7 @@ rockbands.music.example.io   2020-10-29T02:37:21Z
 Create one custom resource (CR) named "beatles" from the example [here](/single-gvk/music/config/samples/music_v1_rockband.yaml).
 
 ```bash
-$ cat music_v1_rockband.yaml 
+$ cat config/samples/music_v1_rockband.yaml 
 apiVersion: music.example.io/v1
 kind: RockBand
 metadata:
@@ -107,7 +121,7 @@ spec:
 Let's create this CR:
 
 ```bash
-$ kubectl create -f music_v1_rockband.yaml -n default
+$ kubectl create -f config/samples/music_v1_rockband.yaml -n default
 rockband.music.example.io/beatles created
 ```
 
@@ -148,6 +162,7 @@ Please note that there is no Status set. This is because we do not have yet a co
 ## Compiling and Starting the Controller
 
 Since we do not care much about the busines logic on the controller, the only thing my controller will do is setting the lastPlayed Status field with the current year.
+
 Here is the snippet of the `music/controllers/rockband_controller.go`
 
 ```go
@@ -180,7 +195,10 @@ Here is the snippet of the `music/controllers/rockband_controller.go`
 	return ctrl.Result{}, nil
 ```
 
-At this time, the controller should be able to be compiled without errors running `make docker-build`.
+At this time, the controller should be able to be compiled without errors running `make docker-build`. 
+
+*Attention:* You can create your own image setting the `IMG` variable.
+
 I will build an image from the controller and name as `quay.io/brito_rafa/music-controller:single-gvk-v0.1`.
 
 ```
@@ -198,11 +216,11 @@ Run:
 ```
 export IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
 make docker-build
-docker push quay.io/brito_rafa/music-controller:single-gvk-v0.1
+make docker-push
 make deploy IMG=quay.io/brito_rafa/music-controller:single-gvk-v0.1
 ```
 
-You might see an error of missing namespace `music-system`:
+***Attention:*** You might see an error of missing namespace `music-system`:
 
 ```bash
 Error from server (NotFound): error when creating "STDIN": namespaces "music-system" not found
@@ -270,7 +288,7 @@ rockband.music.example.io "beatles" deleted
 
 For this demo, we came up with a couple silly rules just to make a point how to mutate and validate RockBands objects.
 
-**ATTENTION:** One can enable some validation part of the API Server using kubebuilder tags `+kubebuilder:validation:Required`.
+***ATTENTION:*** One can enable some validation part of the API Server using kubebuilder tags `+kubebuilder:validation:Required`.
 There is one academic controller we wrote that uses as example [here](https://github.com/embano1/codeconnect-vm-operator/blob/main/api/v1alpha1/vmgroup_types.go).
 The validations in this section are for academic purposes.
 
@@ -286,7 +304,7 @@ Validation:
 
 ### Code
 
-Let's do the scaffolding:
+Let's do the webhook kubebuilder scaffolding:
 
 ```bash
 kubebuilder create webhook --group music --version v1 --kind RockBand --defaulting --programmatic-validation
@@ -297,7 +315,7 @@ Scaffolding should have created the file  `music/api/v1/rockband_webhook.go` AND
 
 #### main.go
 
-Let's mak sure the following webhook call is on main.go, otherwise the webhook will not run:
+Let's make sure the following webhook call is on main.go, otherwise the webhook will not run:
 
 ```go main.go
 	if err = (&musicv1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
@@ -418,7 +436,7 @@ docker push quay.io/brito_rafa/music-controller:single-gvk-v0.1
 
 There are multiple places that you will need to set to tell kubebuilder+kustomize to deploy the webhooks.
 
-The main file is `config/default/kustomization.yaml` and you must uncomment all sections in regards `WEBHOOK` and `CERTMANAGER`.
+The main file is `music/config/default/kustomization.yaml` and you must uncomment all sections in regards `WEBHOOK` and `CERTMANAGER`.
 The final result should look like this [kustomization.yaml](/single-gvk/music/config/default/kustomization.yaml).
 
 ```
@@ -535,13 +553,14 @@ configurations:
 
 ***ATTENTION***:
 
-I had multiple issues running `make deploy` because  `config/crd/patches/*yaml` were using apiextensions.k8s.io/v1beta1 instead of apiextensions.k8s.io/v1. I had to manually edit the files to follow the correct API Group version. 
+I had multiple issues running `make deploy` because  `music/config/crd/patches/*yaml` files were using apiextensions.k8s.io/v1beta1 instead of apiextensions.k8s.io/v1. I had to manually edit the files to follow the correct API Group version. 
 You can see my tweaked files [cainjection_in_rockbands.yaml](/single-gvk/music/config/crd/patches/cainjection_in_rockbands.yaml) and [webhook_in_rockbands.yaml](/single-gvk/music/config/crd/patches/webhook_in_rockbands.yaml).
 
-Use them instead the default. See "Common Errors" section for the errors messages.
+*Use them instead the default.*
+
+See "Common Errors" section for the errors messages.
 
 After all these changes, we are ready to deploy the controller with the webhook.
-
 
 **Attention**: if you have not installed the cert-manager, the time is now, otherwise `make deploy` will fail:
 
@@ -730,20 +749,22 @@ With these tests, we conclude the sample code for a single version of the API Gr
 
 Next, we will test with two versions of API Groups and webhook to mutate them.
 
-## Deploying the CRD + controller without Kubebuilder
+## Deploying the CRD + controller
 
 Once you build the controller and the CRD, you can generate the yaml file to distribute to other users.
 You generate yaml by running the following:
 
 ```bash
-$kustomize build config/default > ../rockband-music-controller-v1.yaml
+$kustomize build config/default > ../single-gvk-v0.1.yaml
 ```
 
-The file is [rockband-music-controller-v1.yaml](/single-gvk/rockband-music-controller-v1.yaml) and anyone can deploy it running:
+The file is [single-gvk-v0.1.yaml](/single-gvk/single-gvk-v0.1.yaml) and anyone can deploy it running:
 
 ```bash
-kubectl create -f rockband-music-controller-v1.yaml
+kubectl create -f single-gvk-v0.1.yaml
 ```
+
+If you arrived at this point, you graduated to create a second version of the RockBand API [here](/multiple-gvk/README.md).
 
 ## Errors Found during this Code
 

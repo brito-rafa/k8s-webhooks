@@ -27,7 +27,7 @@ type RockBandSpec struct {
 }
  ```
 
- My webhook's job is converting the custom resources (CRs) back and forth from v1 and v1alpha1 while doing its best to support the lack of Spec.LeadSinger.
+ My webhook's job is converting the custom resources (CRs) back and forth from `v1` and `v1alpha1` while doing its best to support the lack of `Spec.LeadSinger` field.
 
  The final code of the CRD+controller+webhook is already at [multiple-gvk/music/](multiple-gvk/music/) directory.
 
@@ -195,7 +195,7 @@ func (*RockBand) Hub() {}
 
 This is the "work-horse" of the conversion logic. Remember that `v1` is the storage version, so for every non-storage version, you will need a conversion.go file with `ConvertTo` and `ConvertFrom` functions.
 
-In my academic example, if one creates a CR using the API RockBandv1alpha1, we will add a default leadSinger (in our case, as variable `defaultValueLeadSingerConverter` set with string "Converted from v1alpha1"). 
+In my academic example, if one creates a CR using the API RockBandv1alpha1, we will add a default leadSinger (in our case, as variable `defaultValueLeadSingerConverter` set with string `Converted from v1alpha1`). 
 
 Additionally, I did something clever: I am leveraging the [Annotation struct](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) to present v1 fields back and forth on v1alpha1 objects. Annotation is a way to attach arbitrary data on any K8s object.
 

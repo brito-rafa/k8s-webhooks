@@ -9,14 +9,14 @@ The example here is a great starting point for you to learn how to validate and 
 
 The code and step-by-step here are focused in how to setup from scratch the whole combination CRD/CR/webhook/controller.
 
-One can just create CRDs and Custom Resources (CRs) on a k8s cluster, but they will do not much without a controller with reconciling code and webhooks (required for mutation and validation).
+One can just create CRDs and Custom Resources (CRs) on a k8s cluster, but they will do not perform anything without a controller with reconciling code and webhooks (required for mutation and validation).
 
-The controller itself in this example does not have any busines logic but you will learn the validation and the mutator to support multiple [API Group Versions](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning) using kubebuilder. One use case for the mutator webhook is a CRD in production that require a new schema without causing any disruption.
+The controller itself in this example does not have any busines logic but you will learn the validation and the mutator to support multiple [API Group Versions](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning) using kubebuilder. One use case for the mutator webhook is a CRD in production that require a new schema and you will need to roll out one while supporting the old schema. We will see how this is achievable using webhooks and annotations.
 
 
 I created this example to aid the coding of [Project Velero to support multiple API Groups during backup and restore](https://github.com/vmware-tanzu/velero/issues/2551).
 
-The sample CRD is named `rockbands.music.example.io` and the controller will be called "music".
+The sample CRD is named `rockbands.music.example.io` and the controller will be called `music`.
 
 Our example sample CRD:
 - domain: example.io
@@ -62,7 +62,7 @@ For all examples, we will use a Kind cluster.
 
 Please see https://github.com/embano1/codeconnect-vm-operator#kubernetes-cluster
 
-### Other K8s Components
+### TLS Cert Manager
 
 TLS is a critical component of webhooks. You will need cert-manager running on your K8s cluster: 
 https://cert-manager.io/docs/installation/kubernetes/
