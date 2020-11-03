@@ -1,12 +1,56 @@
 # Kubernetes Custom Resource Definitions and Webhooks
 
-This is a repository to give a simple example in how to create k8s Custom Resource Definitions (CRD) and [webhooks](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) using [kubebuilder](https://go.kubebuilder.io/).
+This is a repository to give a simple example in how to create a k8s Custom Resource Definition (CRD) and a controller with [webhooks](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) using [kubebuilder](https://go.kubebuilder.io/). 
 
-One can just create CRDs and Custom Resources (CRs) on a k8s cluster, but they will do not much without a controller with webhooks (required for mutation and validation).
+The example here is a great starting point for you to learn how to validate and mutate your CRDs across multiple [API Group Versions](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning) and a springboard for a simple controller.
 
-The code and steps here will focus in how to setup the the whole shebang CRD/CR/webhook/controller from scratch.
 
-## Pre-reqs
+## What are We Trying to Achieve?
+
+The code and step-by-step here are focused in how to setup from scratch the whole combination CRD/CR/webhook/controller.
+
+One can just create CRDs and Custom Resources (CRs) on a k8s cluster, but they will do not much without a controller with reconciling code and webhooks (required for mutation and validation).
+
+The controller itself in this example does not have any busines logic but you will learn the validation and the mutator to support multiple [API Group Versions](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning) using kubebuilder. One use case for the mutator webhook is a CRD in production that require a new schema without causing any disruption.
+
+
+I created this example to aid the coding of [Project Velero to support multiple API Groups during backup and restore](https://github.com/vmware-tanzu/velero/issues/2551).
+
+The sample CRD is named `rockbands.music.example.io` and the controller will be called "music".
+
+Our example sample CRD:
+- domain: example.io
+- group: music
+- kind: rockband
+- versions: v1 and v1alpha1
+- `RockBandv1` : Fields `Spec.Genre`, `Spec.NumberComponents`, `Spec.LeadSinger` and `Status.LastPlayed`
+- `RockBandv1alpha1` : Fields `Spec.Genre`, `Spec.NumberComponents`, and `Status.LastPlayed`
+
+The controller will present the CRs back and forth between versions `v1` and `v1alpha1`.
+
+```
+$ kubectl get crd rockbands.music.example.io
+NAME                         CREATED AT
+rockbands.music.example.io   2020-10-28T19:51:25Z
+```
+
+I found easier to code this example in major two steps: 
+1. "First Example": Creating the first CRD version and validator webhook. 
+2. "Second Example": Creating the second API Group version and conversion webhook. 
+
+
+## First Example: A single Group Version Kind (GVK)
+
+This is the first example and we will start with one version of the group and kind: `RockBandv1`.
+Please start at [README.md](/single-gvk/README.md).
+
+## Second Example: Multiple Group Version Kind (GVK)
+
+This is the second example and it is built upon the first example. It creates the `RockBandv1alpha1`.
+Please refer at [README.md](/multiple-gvk/README.md).
+
+
+## Pre-reqs for this Development and Testing
 
 ### Development Software
 
@@ -38,10 +82,10 @@ cert-manager-cainjector-5df5cf79bf-j9h8m   1/1     Running   1          24s
 cert-manager-webhook-8557565b68-hpp5f      1/1     Running   0          24s
 ```
 
-If you want, you can use the example-io-self-signed.yaml file here to test if cert-manager is operational.
+If you want, you can use the [example-io-self-signed.yaml](/other/example-io-self-signed.yaml) file here to test if cert-manager is operational. You can delete the cert after testing it (kubebuilder creates its own.)
 
 ```
-$ kubectl create -f example-io-self-signed.yaml 
+$ kubectl create -f other/example-io-self-signed.yaml 
 issuer.cert-manager.io/example-io-selfsigned created
 certificate.cert-manager.io/example-io-selfsigned created
 
@@ -56,30 +100,3 @@ $ kubectl delete -f example-io-self-signed.yaml
 issuer.cert-manager.io "example-io-selfsigned" deleted
 certificate.cert-manager.io "example-io-selfsigned" deleted
 ```
-
-
-## High-Level Design of the CRD
-
-Our CRD example will go over a life cycle, which means having multiple versions over time.
-And the webhook on the controller will handle the changes across versions.
-
-Our example:
-- domain: example.io
-- group: music
-- kind: rockband
-- versions: v1beta1, v1, v2alpha1, etc
-
-So our CRD will be rockbands.music.example.io. The CRD will have information of a given rockband under the API group music.example.io.
-
-```
-$ kubectl get crd rockbands.music.example.io
-NAME                         CREATED AT
-rockbands.music.example.io   2020-10-28T19:51:25Z
-```
-We will talk about the specs on the examples.
-
-## First Example: A single Group Version Kind (GVK)
-
-This is the first example and we will start with one version of the group and kind.
-Please start at [README.md](/single-gvk/README.md).
-
