@@ -1,0 +1,8 @@
+apiVersion: music.example.io/v1alpha1
+kind: RockBand
+metadata:
+  name: pearljam
+spec:
+  # Add fields here
+  genre: Grunge
+  numberComponents: 5
