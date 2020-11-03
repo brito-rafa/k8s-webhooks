@@ -6,18 +6,18 @@ Anyone can code multiple API Group versions from scratch using kubebuilder, but 
 
 ## CRD Design Decisions
 
-For this example, I am coding the use case of a backward compability of the existent API Group (v1). So, I am adding an earlier version - v1alpha1 - of the API group while keeping v1 as preferred version. You migh want to follow the convention of the [K8s API versioning](https://kubernetes.io/docs/reference/using-api/#api-versioning)
+For this example, I am coding the use case of a backward compability of the existent API Group `v1`. So, I am adding an earlier version `v1alpha1` of the same API group while keeping `v1` as the default version. You might want to read and follow the convention of the [K8s API versioning.](https://kubernetes.io/docs/reference/using-api/#api-versioning)
 
 Again, this is an academic example, you are free to create a newer version of the API group instead of an older one.
 
-At this time, you need to define two other things on your API Groups:
+At this time, you need to define two things on your API Group:
 
-- which version will be the prefered version (aka storage version), which is `v1` (same as first example)
-- what schema changes will be between the `v1alpha1` and `v1` versions, in order words, what changed between versions that my controller will need to adapt.
+- Which API Group Version will be set as the [storage version](https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions) A.K.A preferred version, which in this example will be  `v1` (same API Group Version as the [first example.](/single-gvk/README.md)
+- What schema changes will be between the `v1alpha1` and `v1` versions, in order words, what changed between versions that my controller will need to adapt.
 
- In this example, my `RockBandv1alpha1` will **not** have one particular field  `Spec.LeadSinger` if compared to `RockBandv1`:
+ In this academic example, my `RockBandv1alpha1` will **not** have one particular field  `Spec.LeadSinger` if compared to `RockBandv1`:
 
- ```go
+ ```go v1alpha1
  // RockBandSpec defines the desired state of RockBand
 type RockBandSpec struct {
 	// +kubebuilder:validation:Optional
@@ -60,7 +60,7 @@ api/v1alpha1/rockband_webhook.go
 You now should see a second directory under `music/api` with the version `v1alpha1`.
 
 
-Let's edit `music/api/v1alpha1/rockband_types.go` and add the same fields as v1 but without LeadSinger.
+Let's edit `music/api/v1alpha1/rockband_types.go` and add the same fields as `v1` but without `Spec.LeadSinger`.
 
 ```go music/api/v1alpha1/rockband_types.go
 
@@ -78,7 +78,7 @@ type RockBandStatus struct {
 }
 ```
 
-Edit the type files and pick `v1` to be the [storage version](https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions), AKA the API Group [preferred version](https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/types.go):
+Make sure the  `v1/rockband_types.go` has the kubebuilder tag to be the [storage version](https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions), A.K.A. the API Group [preferred version](https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/types.go):
 
 
 ``` go v1
@@ -89,7 +89,7 @@ type RockBand struct {
 	metav1.TypeMeta   `json:",inline"`
 ```
 
-Test the introduction of `v1alpha` changes running the following:
+Test the introduction of `v1alpha1` changes running the following:
 
 ```
 make manifests && make generate
@@ -99,16 +99,16 @@ Check the file `music/config/crd/bases/music.example.io_rockbands.yaml` for both
 
 Then run:
 
-```
+```bash
 $ make install
 (...)
 kustomize build config/crd | kubectl apply -f -
 customresourcedefinition.apiextensions.k8s.io/rockbands.music.example.io configured
 ```
 
-Check both versions are installed and preferred version is v1:
+Check both versions are installed and preferred version is `v1`. This is a very useful command:
 
-```
+```bash
 $ kubectl get --raw /apis/music.example.io | jq -r
 {
   "kind": "APIGroup",
@@ -130,30 +130,15 @@ $ kubectl get --raw /apis/music.example.io | jq -r
   }
 ```
 
-Then, check the fields of the `v1alpha1`:
+Then, check the CRD fields of the `v1alpha1`:
 
-```
+```bash
 $ kubectl get crd rockbands.music.example.io -o yaml
 
 (...)
-
   - name: v1alpha1
     schema:
-      openAPIV3Schema:
-        description: RockBand is the Schema for the rockbands API
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
+ (...)
           spec:
             description: RockBandSpec defines the desired state of RockBand
             properties:
@@ -163,25 +148,17 @@ $ kubectl get crd rockbands.music.example.io -o yaml
                 format: int32
                 type: integer
             type: object
-          status:
-            description: RockBandStatus defines the observed state of RockBand
-            properties:
-              lastPlayed:
-                type: string
-            required:
-            - lastPlayed
-            type: object
-        type: object
 (...)
 ```
 
 ### Coding API Group conversion
 
-Now that our CRD supports both versions - `v1` and `v1alpha` (with `v1` being the preferred), it is time to code the webhook to convert the object back and forth.
+Now that our CRD supports both versions `v1` and `v1alpha` (with `v1` being the preferred), it is time to code the webhook to convert the object back and forth the versions.
 
 - `main.go`
 
-The command `kubebuilder create webhook ... --conversion`, should have added a second `SetupWebhookWithManager` call on your existing `main.go`. The difference is the second call points to the `RockBandv1alpha1`:
+The command `kubebuilder create webhook ... --conversion`, should have added a second `SetupWebhookWithManager` call on your existing `main.go`. 
+Please note the difference the second call points to the `RockBandv1alpha1`:
 
 ```go main.go
 
@@ -189,7 +166,8 @@ The command `kubebuilder create webhook ... --conversion`, should have added a s
 		setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
 		os.Exit(1)
     }
-    // New, automatically added by kubebuilder
+    // New call, automatically added by kubebuilder
+
 	if err = (&musicv1alpha1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
 		os.Exit(1)
@@ -202,9 +180,9 @@ Now, we need to write code for the conversion using the [Kubebuilder book refere
 
 - `music/api/v1/rockband_conversion.go`:
 
-Under preferred version api directory, you will need the Hub function:
+Under preferred version api directory, you will only need the Hub function:
 
-```
+```go /multiple-gvk/music/api/v1/rockband_conversion.go
 package v1
 
 // conversion - v1 is the Hub
@@ -213,16 +191,15 @@ func (*RockBand) Hub() {}
 
 ```
 
-
 - `music/api/v1alpha1/rockband_conversion.go`, entire file [here](/multiple-gvk/music/api/v1alpha1/rockband_conversion.go):
 
-This is the "work-horse" of the conversion logic. Remember that `v1` is the storage version, so for every non-storage version (aka preferred version), you will need a conversion.go file with ConvertTo and ConvertFrom functions.
+This is the "work-horse" of the conversion logic. Remember that `v1` is the storage version, so for every non-storage version, you will need a conversion.go file with `ConvertTo` and `ConvertFrom` functions.
 
-In my academic example, if one creates a CR using the API RockBandv1alpha1, we will add a default leadSinger (in our case, set as variable `defaultValueLeadSingerConverter` with string "Converted from v1alpha1"). 
+In my academic example, if one creates a CR using the API RockBandv1alpha1, we will add a default leadSinger (in our case, as variable `defaultValueLeadSingerConverter` set with string "Converted from v1alpha1"). 
 
-Additionally, I did something clever as well: I am leveraging the [Annotation struct](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/), which is a way to attach arbitrary data on objects. This way, I can present v1 fields back and forth on v1alpha1 objects. 
+Additionally, I did something clever: I am leveraging the [Annotation struct](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/) to present v1 fields back and forth on v1alpha1 objects. Annotation is a way to attach arbitrary data on any K8s object.
 
-Snippet of the code:  entire file [here](/multiple-gvk/music/api/v1alpha1/rockband_conversion.go):
+See below the snippet of the code, with the entire file [here](/multiple-gvk/music/api/v1alpha1/rockband_conversion.go):
 
 ```go
 var (
@@ -268,23 +245,157 @@ func (dst *RockBand) ConvertFrom(srcRaw conversion.Hub) error {
 }
 ```
 
-## Deploying and testing the conversion 
+## Deploying and testing the API Group Version conversion 
 
 Let's build and deploy the controller:
 
-```
+```bash
 $ export IMG=quay.io/brito_rafa/music-controller:multiple-gvk-v0.1
 $ make docker-build
 $ make docker-push
 # do not forget to make the image public (or create a pull secret)
 $ make deploy IMG=quay.io/brito_rafa/music-controller:multiple-gvk-v0.1
+$ $ kubectl get pods -n music-system
+NAME                                        READY   STATUS    RESTARTS   AGE
+music-controller-manager-54468879c9-rdznh   2/2     Running   0          2m27s
+```
+Let's see the controller logs and pay attention on `registering webhook     {"path": "/convert"}`:
+
+```bash
+$ kubectl logs music-controller-manager-54468879c9-rdznh -n music-system manager
+2020-11-03T17:26:55.596Z        INFO    controller-runtime.metrics      metrics server is starting to listen {"addr": "127.0.0.1:8080"}
+2020-11-03T17:26:55.596Z        INFO    controller-runtime.builder      Registering a mutating webhook       {"GVK": "music.example.io/v1, Kind=RockBand", "path": "/mutate-music-example-io-v1-rockband"}
+2020-11-03T17:26:55.596Z        INFO    controller-runtime.webhook      registering webhook     {"path": "/mutate-music-example-io-v1-rockband"}
+2020-11-03T17:26:55.596Z        INFO    controller-runtime.builder      Registering a validating webhook     {"GVK": "music.example.io/v1, Kind=RockBand", "path": "/validate-music-example-io-v1-rockband"}
+2020-11-03T17:26:55.596Z        INFO    controller-runtime.webhook      registering webhook     {"path": "/validate-music-example-io-v1-rockband"}
+2020-11-03T17:26:55.596Z        INFO    controller-runtime.webhook      registering webhook     {"path": "/convert"}
+2020-11-03T17:26:55.596Z        INFO    controller-runtime.builder      conversion webhook enabled  {"object": {"metadata":{"creationTimestamp":null},"spec":{"genre":"","numberComponents":0,"leadSinger":""},"status":{"lastPlayed":""}}}
+2020-11-03T17:26:55.597Z        INFO    controller-runtime.builder      skip registering a mutating webhook, admission.Defaulter interface is not implemented        {"GVK": "music.example.io/v1alpha1, Kind=RockBand"}
+2020-11-03T17:26:55.597Z        INFO    controller-runtime.builder      skip registering a validating webhook, admission.Validator interface is not implemented      {"GVK": "music.example.io/v1alpha1, Kind=RockBand"}
+2020-11-03T17:26:55.597Z        INFO    controller-runtime.builder      conversion webhook enabled  {"object": {"metadata":{"creationTimestamp":null},"spec":{"genre":"","numberComponents":0},"status":{"lastPlayed":""}}}
+2020-11-03T17:26:55.597Z        INFO    setup   starting manager
+I1103 17:26:55.597731       1 leaderelection.go:242] attempting to acquire leader lease  music-system/9f9c4fd4.example.io...
+2020-11-03T17:26:55.598Z        INFO    controller-runtime.manager      starting metrics server {"path": "/metrics"}
+2020-11-03T17:26:55.598Z        INFO    controller-runtime.webhook.webhooks     starting webhook server
+2020-11-03T17:26:55.599Z        INFO    controller-runtime.certwatcher  Updated current TLS certificate
+I1103 17:26:55.702653       1 leaderelection.go:252] successfully acquired lease music-system/9f9c4fd4.example.io
+2020-11-03T17:26:55.793Z        INFO    controller-runtime.webhook      serving webhook server  {"host": "", "port": 9443}
+2020-11-03T17:26:55.702Z        DEBUG   controller-runtime.manager.events       Normal  {"object": {"kind":"ConfigMap","namespace":"music-system","name":"9f9c4fd4.example.io","uid":"80b81443-de6d-4383-ba43-70c97c43b553","apiVersion":"v1","resourceVersion":"1081"}, "reason": "LeaderElection", "message": "music-controller-manager-54468879c9-rdznh_4ca3cf7a-1a61-4b71-abac-ed1d40f090ad became leader"}
+2020-11-03T17:26:55.794Z        INFO    controller-runtime.certwatcher  Starting certificate watcher
+2020-11-03T17:26:55.795Z        INFO    controller-runtime.controller   Starting EventSource    {"controller": "rockband", "source": "kind source: /, Kind="}
+2020-11-03T17:26:55.896Z        INFO    controller-runtime.controller   Starting Controller     {"controller": "rockband"}
+2020-11-03T17:26:55.896Z        INFO    controller-runtime.controller   Starting workers        {"controller": "rockband", "worker count": 1}
 ```
 
-I added three examples on the sample directory.
 
-TBD
+I added three examples on the sample directory in how to create and display the CRs.
 
-## Common Errors Found during this code
+### Creating a v1 CR and displaying as v1alpha1
+
+Let's create the same sample `beatles` CR using `RockBandv1` that we created on the first example.
+Then we will list it using `RockBandv1alpha1` over the command `kubectl get rockbands.v1alpha1.music.example.io -o yaml`:
+
+```bash
+$ kubectl create -f multiple-gvk/music/config/samples/music_v1_rockband.yaml 
+rockband.music.example.io/beatles created
+
+$ kubectl get rockbands.v1alpha1.music.example.io -o yaml
+(...)
+- apiVersion: music.example.io/v1alpha1
+  kind: RockBand
+  metadata:
+    annotations:
+      rockbands.v1.music.example.io/leadSinger: John Lennon
+      (...)
+  spec:
+    genre: 60s rock
+    numberComponents: 4
+  status:
+    lastPlayed: "2020"
+
+```
+
+First of all, see the the API version is `music.example.io/v1alpha1`. Then see that `Spec.LeadSinger` disappeared but there is an annotation field with `rockbands.v1.music.example.io/leadSinger` set as `John Lennon` (our validation code from first exampled kicked in as well).
+
+### Creating v1alpha1 CR as displaying as v1
+
+The second example is creating a CR using `RockBandv1alpha1` API which does not have a `Spec.LeadSinger`:
+
+```bash
+$ cat multiple-gvk/music/config/samples/music_v1alpha1_rockband.yaml 
+apiVersion: music.example.io/v1alpha1
+kind: RockBand
+metadata:
+  name: pearljam
+spec:
+  # Add fields here
+  genre: Grunge
+  numberComponents: 5
+
+$ kubectl create -f  multiple-gvk/music/config/samples/music_v1alpha1_rockband.yaml 
+rockband.music.example.io/pearljam created
+
+$ kubectl get rockbands.v1.music.example.io -o yaml
+(...)
+- apiVersion: music.example.io/v1
+  kind: RockBand
+  metadata:
+(...)
+    name: pearljam
+    namespace: default
+(...)
+  spec:
+    genre: Grunge
+    leadSinger: Converted from v1alpha1
+    numberComponents: 5
+  status:
+    lastPlayed: "2020"
+```
+
+### Creating v1alpha1 CR with v1 field on annotation
+
+This last example is how to create a CR using `v1alpha1` schema but still adding `v1` fields as part of annotation.
+
+```bash
+$ cat multiple-gvk/music/config/samples/music_v1alpha1_rockband-with-v1-field-as-annotation.yaml 
+apiVersion: music.example.io/v1alpha1
+kind: RockBand
+metadata:
+  name: ramones
+  annotations:
+    rockbands.v1.music.example.io/leadSinger: Joey
+spec:
+  # Add fields here
+  genre: Punk
+  numberComponents: 4
+
+$ kubectl create -f multiple-gvk/music/config/samples/music_v1alpha1_rockband-with-v1-field-as-annotation.yaml 
+rockband.music.example.io/ramones created
+
+$ kubectl get rockbands.v1.music.example.io -o yaml
+(...)
+- apiVersion: music.example.io/v1
+  kind: RockBand
+  metadata:
+    annotations:
+      rockbands.v1.music.example.io/leadSinger: Joey
+(...)
+    name: ramones
+    namespace: default
+ (...)
+  spec:
+    genre: Punk
+    leadSinger: Joey
+    numberComponents: 4
+  status:
+    lastPlayed: "2020"
+```
+
+To conclude, we showed here how to create a CRD+controller+webhook using kubebuilder while supporting multiple API Group versions.
+
+
+
+## Errors Found during this code
 
 
 ### webhook-service not found
@@ -301,7 +412,7 @@ metadata:
 Error from server: conversion webhook for music.example.io/v1alpha1, Kind=RockBandList failed: Post https://webhook-service.system.svc:443/convert?timeout=30s: service "webhook-service" not found
 ```
 
-Solution: bad `webhook_in_rockbands.yaml` - I had to forcily put the correct namespace `music-system` on this file. The origin of this bug is due to the kubebuilder was creating files with crd v1beta1 extensions.
+Solution: bad `webhook_in_rockbands.yaml` - I had to manually fix the the correct namespace `music-system` and service name on this file. Kubebuilder was creating files with crd v1beta1 extensions and I had to troubleshoot and adapt this template to crd v1.
 
 ``` yaml
         service:
@@ -326,7 +437,7 @@ The correct logs should look like this:
 
 ### Convert Object Panic
 
-Solution: check your ConvertTo/From code. The ObjectMeta must exist, the annotation field is not well coded, etc.
+Solution: check your ConvertTo/From code. The ObjectMeta must exist, the annotation field was not defined initially.
 
 Error:
 ```
@@ -340,30 +451,17 @@ panic(0x13d7bc0, 0x172a4e0)
 music/api/v1alpha1.(*RockBand).ConvertFrom(0xc0000f1400, 0x1770820, 0xc0002d8580, 0x1770820, 0xc0002d8580)
         /workspace/api/v1alpha1/rockband_conversion.go:24 +0xc1
 sigs.k8s.io/controller-runtime/pkg/webhook/conversion.(*Webhook).convertObject(0xc0003a1430, 0x174ba20, 0xc0002d8580, 0x174baa0, 0xc0000f1400, 0x174baa0, 0xc0000f1400)
-        /go/pkg/mod/sigs.k8s.io/controller-runtime@v0.5.0/pkg/webhook/conversion/conversion.go:142 +0x7bc
-sigs.k8s.io/controller-runtime/pkg/webhook/conversion.(*Webhook).handleConvertRequest(0xc0003a1430, 0xc0004f3580, 0xc000547fb0, 0x0, 0x0)
-        /go/pkg/mod/sigs.k8s.io/controller-runtime@v0.5.0/pkg/webhook/conversion/conversion.go:107 +0x1f8
-sigs.k8s.io/controller-runtime/pkg/webhook/conversion.(*Webhook).ServeHTTP(0xc0003a1430, 0x1770b20, 0xc00064c1c0, 0xc00050aa00)
-        /go/pkg/mod/sigs.k8s.io/controller-runtime@v0.5.0/pkg/webhook/conversion/conversion.go:74 +0x10b
-sigs.k8s.io/controller-runtime/pkg/webhook.instrumentedHook.func1(0x1770b20, 0xc00064c1c0, 0xc00050aa00)
-        /go/pkg/mod/sigs.k8s.io/controller-runtime@v0.5.0/pkg/webhook/server.go:123 +0xfc
-net/http.HandlerFunc.ServeHTTP(0xc000616b70, 0x1770b20, 0xc00064c1c0, 0xc00050aa00)
-        /usr/local/go/src/net/http/server.go:2036 +0x44
-net/http.(*ServeMux).ServeHTTP(0xc000343f00, 0x1770b20, 0xc00064c1c0, 0xc00050aa00)
-        /usr/local/go/src/net/http/server.go:2416 +0x1bd
-net/http.serverHandler.ServeHTTP(0xc0001aa460, 0x1770b20, 0xc00064c1c0, 0xc00050aa00)
-        /usr/local/go/src/net/http/server.go:2831 +0xa4
-net/http.(*conn).serve(0xc000122780, 0x17750a0, 0xc00063af40)
-        /usr/local/go/src/net/http/server.go:1919 +0x875
-created by net/http.(*Server).Serve
-        /usr/local/go/src/net/http/server.go:2957 +0x384
-2020-11-02T22:55:50.241Z        INFO    controllers.RockBand    received reconcile request for "beatles" (namespace: "default")      {"rockband": "default/beatles"}
-2020-11-02T22:55:50.248Z        DEBUG   controller-runtime.controller   Successfully Reconciled      {"controller": "rockband", "request": "default/beatles"}
-2020-11-02T22:55:50.248Z        INFO    controllers.RockBand    received reconcile request for "beatles" (namespace: "default")      {"rockband": "default/beatles"}
-2020-11-02T22:55:50.248Z        DEBUG   controller-runtime.controller   Successfully Reconciled      {"controller": "rockband", "request": "default/beatles"}
 ```
 
+### cert-manager CRDs
 
+Error:
+```
+unable to recognize "multiple-gvk/multiple-gvk-v0.1.yaml": no matches for kind "Certificate" in version "cert-manager.io/v1alpha2"
+unable to recognize "multiple-gvk/multiple-gvk-v0.1.yaml": no matches for kind "Issuer" in version "cert-manager.io/v1alpha2"
+```
+
+Solution: install cert-manager
 
 
 
