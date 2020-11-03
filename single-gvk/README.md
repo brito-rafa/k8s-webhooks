@@ -8,6 +8,8 @@ In addition, I recommend you to look at our other controller example https://git
 
 The final result of this code is under [single-gvk/music](/single-gvk/music) subdirectory. You can use it as reference, but we will start from an empty directory.
 
+## For the impatients
+
 For the impatients who want to see the final result without running all steps:
 
 ```bash
@@ -45,8 +47,7 @@ items:
     lastPlayed: "2020"
 ```
 
- The file [single-gvk-v0.1.yaml](/single-gvk/single-gvk-v0.1.yaml) points to the controller docker image quay.io/brito_rafa/music-controller:single-gvk-v0.1 .
- ```
+The file [single-gvk-v0.1.yaml](/single-gvk/single-gvk-v0.1.yaml) points to the controller docker image quay.io/brito_rafa/music-controller:single-gvk-v0.1 .
 
 For the step-by-step to create all the above, follow the next sections.
 
