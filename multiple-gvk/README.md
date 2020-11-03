@@ -1,30 +1,51 @@
 # Second Example: Two Versions of an API Group
 
-If you have not seen yet, please go to the [first example with a single version](/single-gvk/README.md) because we will start from the code in there.
+If you have not seen it yet, please make sure you follow [our first example](/single-gvk/README.md) with the a single API Group version.  This first example is a building block for the code in here.
 
-You can code multiple versions in one shot, but we found easier starting with one API Group version and  making sure the webhook is operational.
+Anyone can code multiple API Group versions from scratch using kubebuilder, but for the sake of academic purposes, I found easier to start with a single API Group version and making sure the webhook is fully operational before adding a second API Group.
 
 ## CRD Design Decisions
 
-For this example, I am coding a backward compability case, which is, 
+For this example, I am coding the use case of a backward compability of the existent API Group (v1). So, I am adding an earlier version - v1alpha1 - of the API group while keeping v1 as preferred version. You migh want to follow the convention of the [K8s API versioning](https://kubernetes.io/docs/reference/using-api/#api-versioning)
 
-I chose to make an earlier version - v1alpha1 - of the API group than the existent one (v1).
-
-If you follow the K8s API standards, you will see v1alpha1 comes before than v1.
-
-Since this is an example, you are free to create a newer version of the API group.
+Again, this is an academic example, you are free to create a newer version of the API group instead of an older one.
 
 At this time, you need to define two other things on your API Groups:
 
-- which will be the prefered version (aka storage version)
-- what schema changes will be between the versions
+- which version will be the prefered version (aka storage version), which is `v1` (same as first example)
+- what schema changes will be between the `v1alpha1` and `v1` versions, in order words, what changed between versions that my controller will need to adapt.
 
- So, v1 is my prefered version and my `RockBandv1alpha1` will **not** have all fields in  this case, it does not have the field `Spec.LeadSinger`. 
+ In this example, my `RockBandv1alpha1` will **not** have one particular field  `Spec.LeadSinger` if compared to `RockBandv1`:
+
+ ```go
+ // RockBandSpec defines the desired state of RockBand
+type RockBandSpec struct {
+	// +kubebuilder:validation:Optional
+	Genre string `json:"genre"`
+	// +kubebuilder:validation:Optional
+	NumberComponents int32 `json:"numberComponents"`
+}
+ ```
+
+ My webhook's job is converting the custom resources (CRs) back and forth from v1 and v1alpha1 while doing its best to support the lack of Spec.LeadSinger.
+
+ The final code of the CRD+controller+webhook is already at [multiple-gvk/music/](multiple-gvk/music/) directory.
+
+ You can skip this step-by-step and deploy the final result of this controller and CRDs running:
+
+ ``` bash
+ # ONLY IF YOU HAVE NOT DONE SO
+ # cert-manager is required for any kubebuilder-created webhook
+ $ kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
+
+ # deploying multiple-gvk music controller and CRDs
+ $ kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/multiple-gvk/multiple-gvk-v0.1.yaml
+ ```
 
 
 ## Creating a second API Group version with kubebuilder
 
-Run the following commands:
+Again, starting from the where [our first example](/single-gvk/README.md) left off. Run the following commands:
 
 ```
 $ kubebuilder create api --group music --version v1alpha1 --kind RockBand --resource=true --controller=false
@@ -57,7 +78,7 @@ type RockBandStatus struct {
 }
 ```
 
-Edit the type files and pick `v1` to be the [preferred version](https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions):
+Edit the type files and pick `v1` to be the [storage version](https://book.kubebuilder.io/multiversion-tutorial/api-changes.html#storage-versions), AKA the API Group [preferred version](https://github.com/kubernetes/apimachinery/blob/master/pkg/apis/meta/v1/types.go):
 
 
 ``` go v1
@@ -156,16 +177,19 @@ $ kubectl get crd rockbands.music.example.io -o yaml
 
 ### Coding API Group conversion
 
+Now that our CRD supports both versions - `v1` and `v1alpha` (with `v1` being the preferred), it is time to code the webhook to convert the object back and forth.
+
 - `main.go`
 
-Because of the command `kubebuilder create webhook ... --conversion`, your `main.go` should have a second `SetupWebhookWithManager` call, this time to the RockBandv1alpha`:
+The command `kubebuilder create webhook ... --conversion`, should have added a second `SetupWebhookWithManager` call on your existing `main.go`. The difference is the second call points to the `RockBandv1alpha1`:
 
 ```go main.go
 
 	if err = (&musicv1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
 		os.Exit(1)
-	}
+    }
+    // New, automatically added by kubebuilder
 	if err = (&musicv1alpha1.RockBand{}).SetupWebhookWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create webhook", "webhook", "RockBand")
 		os.Exit(1)
@@ -176,9 +200,9 @@ Because of the command `kubebuilder create webhook ... --conversion`, your `main
 Now, we need to write code for the conversion using the [Kubebuilder book references](https://book.kubebuilder.io/multiversion-tutorial/conversion.html).
 
 
-Under preferred version api directory, you will need the Hub
-
 - `music/api/v1/rockband_conversion.go`:
+
+Under preferred version api directory, you will need the Hub function:
 
 ```
 package v1
@@ -189,43 +213,76 @@ func (*RockBand) Hub() {}
 
 ```
 
-On other versions, you will need to add the conversion logic. In this case, if one creates the RockBandv1alpha1, we will add "TBD Converter" as LeadSinger.
-And if you retrieve the RockBand object over v1alpha1, we will add leadSinger on the annotation.
 
-- `music/api/v1alpha1/rockband_conversion.go`, entire file here:
+- `music/api/v1alpha1/rockband_conversion.go`, entire file [here](/multiple-gvk/music/api/v1alpha1/rockband_conversion.go):
 
-```
+This is the "work-horse" of the conversion logic. Remember that `v1` is the storage version, so for every non-storage version (aka preferred version), you will need a conversion.go file with ConvertTo and ConvertFrom functions.
+
+In my academic example, if one creates a CR using the API RockBandv1alpha1, we will add a default leadSinger (in our case, set as variable `defaultValueLeadSingerConverter` with string "Converted from v1alpha1"). 
+
+Additionally, I did something clever as well: I am leveraging the [Annotation struct](https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/), which is a way to attach arbitrary data on objects. This way, I can present v1 fields back and forth on v1alpha1 objects. 
+
+Snippet of the code:  entire file [here](/multiple-gvk/music/api/v1alpha1/rockband_conversion.go):
+
+```go
 var (
-	leadSingerAnnotation = "rockband.music.example.io/lead-singer"
+	// this is the annotation key to keep leadSinger value if converted from v1 to v1alpha1
+	leadSingerAnnotation = "rockbands.v1.music.example.io/leadSinger"
+	// default leadSinger string to be used when converting from v1alpha1 to v1
+	defaultValueLeadSingerConverter = "Converted from v1alpha1"
 )
 
+// ConvertTo converts this RockBand v1alpha1 to the Hub version (v1)
 func (src *RockBand) ConvertTo(dstRaw conversion.Hub) error {
-	dst := dstRaw.(*v1.RockBand)
-	dst.Spec.LeadSinger = "TBD Converter"
-	return nil
+    dst := dstRaw.(*v1.RockBand)
+    (...)
+        dst.Spec.LeadSinger = defaultValueLeadSingerConverter
+    (...)
 }
 
+// ConvertFrom converts from the Hub version (v1) to this version valpha1
 func (dst *RockBand) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1.RockBand)
-	dst.Spec.NumberComponents = src.Spec.NumberComponents
-	dst.Spec.Genre = src.Spec.Genre
-	// Retaining the LeadSinger as an annotation
-	dst.Annotations[leadSingerAnnotation] = src.Spec.LeadSinger
-	return nil
+(...)
+
+	// Retaining the v1 LeadSinger values as an annotation
+	// Saving fields as annotation is a great way
+	// to keep information back and forth between legacy and modern API Groups
+
+	// if the leadSinger is already is set as the default value from v1alpha1 (see ConvertTo)
+	// do not bother to create an annotation
+
+	if src.Spec.LeadSinger != defaultValueLeadSingerConverter {
+		annotations := dst.GetAnnotations()
+
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
+
+		annotations[leadSingerAnnotation] = src.Spec.LeadSinger
+
+		dst.SetAnnotations(annotations)
+
+    }
+    (...)
 }
 ```
 
 ## Deploying and testing the conversion 
 
-As usual, rebuild and deploy the controller:
+Let's build and deploy the controller:
 
 ```
-export IMG=quay.io/brito_rafa/music-controller:multiple-gvk-v0.1
-make docker-build
-docker push quay.io/brito_rafa/music-controller:multiple-gvk-v0.1
-make deploy IMG=quay.io/brito_rafa/music-controller:multiple-gvk-v0.1
+$ export IMG=quay.io/brito_rafa/music-controller:multiple-gvk-v0.1
+$ make docker-build
+$ make docker-push
+# do not forget to make the image public (or create a pull secret)
+$ make deploy IMG=quay.io/brito_rafa/music-controller:multiple-gvk-v0.1
 ```
 
+I added three examples on the sample directory.
+
+TBD
 
 ## Common Errors Found during this code
 
