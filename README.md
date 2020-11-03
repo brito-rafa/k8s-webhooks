@@ -11,7 +11,7 @@ The code and step-by-step here are focused in how to setup from scratch the whol
 
 One can just create CRDs and Custom Resources (CRs) on a k8s cluster, but they will do not perform anything without a controller with reconciling code and webhooks (required for mutation and validation).
 
-The controller itself in this example does not have any busines logic but you will learn the validation and the mutator to support multiple [API Group Versions](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning) using kubebuilder. One use case for the mutator webhook is a CRD in production that require a new schema and you will need to roll out one while supporting the old schema. We will see how this is achievable using webhooks and annotations.
+The controller itself in this example does not have any busines logic but you will learn the validation and the mutator to support multiple [API Group Versions](https://kubernetes.io/docs/concepts/overview/kubernetes-api/#api-groups-and-versioning) using kubebuilder. One use case for the mutator webhook is a CRD in production that require a new schema and you will need to roll out the new schema while supporting the old schema. We will see how this is achievable using webhooks and annotations.
 
 
 I created this example to aid the coding of [Project Velero to support multiple API Groups during backup and restore](https://github.com/vmware-tanzu/velero/issues/2551).
@@ -40,6 +40,8 @@ I found easier to code this example in major two steps:
 
 
 ## First Example: A single Group Version Kind (GVK)
+
+*** START HERE ***
 
 This is the first example and we will start with one version of the group and kind: `RockBandv1`.
 Please start at [README.md](/single-gvk/README.md).

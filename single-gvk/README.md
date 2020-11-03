@@ -646,7 +646,7 @@ Controller logs during creation:
 2020-10-28T21:36:09.506Z        DEBUG   controller-runtime.controller   Successfully Reconciled {"controller": "rockband", "request": "default/beatles"}
 ```
 
-Result of the CR (plase note the leadSinger as John Lennon):
+Result of the CR (please note the `leadSinger` as `John Lennon` instead of `John`):
 
 ```bash
 $ kubectl get rockband beatles -n default -o yaml
@@ -763,6 +763,7 @@ The file is [single-gvk-v0.1.yaml](/single-gvk/single-gvk-v0.1.yaml) and anyone 
 ```bash
 kubectl create -f single-gvk-v0.1.yaml
 ```
+## Next Step: Second Example of Multiple API Groups
 
 If you arrived at this point, you graduated to create a second version of the RockBand API [here](/multiple-gvk/README.md).
 
