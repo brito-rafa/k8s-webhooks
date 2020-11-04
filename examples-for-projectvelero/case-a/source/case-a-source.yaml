@@ -296,7 +296,7 @@ spec:
         - --enable-leader-election
         command:
         - /manager
-        image: quay.io/brito_rafa/music-controller:multiple-gvk-0.2
+        image: quay.io/brito_rafa/music-controller:case-a-source-v0.1
         name: manager
         ports:
         - containerPort: 9443

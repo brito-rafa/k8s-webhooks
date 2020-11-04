@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/brito_rafa/music-controller
-  newTag: multiple-gvk-0.2
+  newTag: case-a-source-v0.1

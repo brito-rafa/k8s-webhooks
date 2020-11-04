@@ -48,6 +48,7 @@ func (src *RockBand) ConvertTo(dstRaw conversion.Hub) error {
 }
 
 // ConvertFrom converts from the Hub version (v1) to this version valpha1
+// This is what the Velero backup will see: v1alpha version
 func (dst *RockBand) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1.RockBand)
 
