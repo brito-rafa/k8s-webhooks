@@ -8,15 +8,25 @@ Expected result: v1 being used during restore.
 
 ## Deploying the Case A
 
-### On Source Cluster
+### Quick Deploy on Source Cluster
 
-Run
+Run:
 
 ```bash
 curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/source-cluster.sh | bash
 ```
 
-Or step-by-step:
+### Quick Deploy on Target Cluster
+
+Run:
+
+```bash
+curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/target-cluster.sh | bash
+```
+
+### Step-by-step Deployment on Source Cluster
+
+Run:
 
 ```bash
 kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
@@ -31,14 +41,21 @@ kubectl get rockbands -A -o yaml
 ```
 
 
-### On Target
+### Step-by-step Deployment on Target Cluster
 
+Run:
 
+```bash
+kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
+sleep 10
+kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/target/case-a-target.yaml
+sleep 10
+# no need to create testing CR - should be from Velero backup
+```
 
 ## Coding and Scaffolding
 
-### On Target
-
+### Using this example on Target cluster from the Source cluster
 
 ```bash
 mkdir music
@@ -50,10 +67,8 @@ kubebuilder create webhook --group music --version v1 --kind RockBand --defaulti
 kubebuilder create api --group music --version v2beta1 --kind RockBand --resource=true --controller=false
 kubebuilder create webhook --group music --version v2beta1 --kind RockBand --conversion
 
-# setting to use CRD
+# setting to use CRD v1
 cp ../../source/music/Makefile Makefile
-
-
 
 # change the v1/rockband_types.go - preferred version
 # make sure to add the kubebuilder tag // +kubebuilder:storageversion
@@ -74,10 +89,12 @@ cp ../../source/music/config/certmanager/certificate.yaml config/certmanager/cer
 cp ../../source/music/config/crd/kustomization.yaml config/crd/kustomization.yaml
 cp ../../source/music/config/crd/patches/* config/crd/patches/
 
-make manifests && make generate
+make manifests && make generate && make install
 
 # copying/generating the samples
+cp ../../source/music/config/samples/* config/samples/
 
+# edit the samples to match your 
 
 # creating the image
 export IMG=quay.io/brito_rafa/music-controller:case-a-target-v0.1
@@ -101,16 +118,3 @@ kustomize build config/default > ../case-a-source.yaml
 # if you want to test the image 
 make deploy IMG=quay.io/brito_rafa/music-controller:case-a-source-v0.1
 ```
-
-
-### Source Cluster
-
-```bash
-# cert-manager
-kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
-# controller and CRD
-
-# example CR for testing - only required on the source cluster
-```
-
-### Target Cluster
