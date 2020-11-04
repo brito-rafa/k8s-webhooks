@@ -403,6 +403,19 @@ $ kubectl get rockbands.v1.music.example.io -o yaml
     lastPlayed: "2020"
 ```
 
+Once you build the controller and the CRD, you can generate the yaml file to distribute to other users.
+You generate yaml by running the following:
+
+```bash
+$ kustomize build config/default > ../multiple-gvk-v0.1.yaml
+```
+
+The file is [multiple-gvk-v0.1.yaml](/multiple-gvk/multiple-gvk-v0.1.yaml) and anyone can deploy it running:
+
+```bash
+kubectl create -f multiple-gvk-v0.1.yaml
+```
+
 To conclude, we showed here how to create a CRD+controller+webhook using kubebuilder while supporting multiple API Group versions.
 
 
