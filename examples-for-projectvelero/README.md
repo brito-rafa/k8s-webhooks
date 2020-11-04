@@ -9,8 +9,8 @@ Evolution of RockBand.music.example.io schema across versions:
 
 - `RockBandv1alpha1` : Fields `Spec.Genre`, `Spec.NumberComponents`
 - `RockBandv1` : all previous plus `Spec.LeadSinger`
-- `RockBandv2alpha1` : all previous plus `Spec.LeadGuitar`
-- `RockBandv2beta1` : all previous plus `Spec.Bass`
+- `RockBandv2beta1` : all previous plus `Spec.LeadGuitar`
+- `RockBandv2beta2` : all previous plus `Spec.Bass`
 - `RockBandv2` : all previous plus `Spec.Drummer`
 - `RockBandv3alpha1` : all previous but `Spec.NumberComponents` = int64
 
@@ -31,25 +31,25 @@ Expected result: v1 being used during restore.
 
 ## Case B
 
-RockBand on Source cluster: v1 (preferred), v2beta1, v2
+RockBand on Source cluster: v1 (preferred), v2beta2, v2
 
-RockBand on Target cluster: v2 (preferred), v1, v2beta1
+RockBand on Target cluster: v2 (preferred), v1, v2beta2
 
 Expected result: v2 being used during restore.
 
 ## Case C
 
-RockBand on Source cluster: v1 (preferred), v1alpha1, v2beta1
+RockBand on Source cluster: v1 (preferred), v1alpha1, v2beta2
 
-RockBand on Target cluster: v2 (preferred), v1, v2beta1
+RockBand on Target cluster: v2 (preferred), v1, v2beta2
 
 Expected result: v1 being used during restore.
 
 ## Case D
 
-RockBand on Source cluster: v1 (preferred), v2beta1, v2alpha1, v1alpha1
+RockBand on Source cluster: v1 (preferred), v2beta1, v2beta2, v1alpha1
 
-RockBand on Target cluster: v2 (preferred), v3alpha1, v2beta1, v2alpha1
+RockBand on Target cluster: v2 (preferred), v3alpha1, v2beta1, v2beta2
 
-Expected result: v2beta1 and v2alpha1 are common and v2beta1 to be used during restore.
+Expected result: v2beta1 and v2beta2 are common. v2beta2 to be used during restore.
 
