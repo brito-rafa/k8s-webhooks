@@ -43,17 +43,33 @@ func (r *RockBand) Default() {
 
 	// TODO(user): fill in your defaulting logic.
 
-	// LeadGuitar is an optional field on RockBandv2beta1
+	// LeadSinger is an optional field on RockBandv1
+	// Adding "TBD" if it is empty
+	if r.Spec.LeadSinger == "" {
+		r.Spec.LeadSinger = "TBD from v2beta1 webhook"
+		rockbandlog.Info("mutator v2beta1 object created without leadSinger, setting as TBD from v2beta1 webhook", "name", r.Name, "namespace", r.Namespace, "lead singer", r.Spec.LeadSinger)
+	}
+
+	// LeadGuitar is an optional field since RockBandv2beta1
 	// Adding "TBD" if it is empty
 	if r.Spec.LeadGuitar == "" {
-		r.Spec.LeadGuitar = "TBD"
-		rockbandlog.Info("mutator v2beta1 object created without leadGuitar, setting as TBD", "name", r.Name, "namespace", r.Namespace, "lead guitar", r.Spec.LeadGuitar)
+		r.Spec.LeadGuitar = "TBD from v2beta1 webhook"
+		rockbandlog.Info("mutator v2beta1 object created without leadGuitar, setting as TBD from v2beta1 webhook", "name", r.Name, "namespace", r.Namespace, "lead guitar", r.Spec.LeadGuitar)
 	}
 
 	// Silly mutation:
+	// if the rockband name is beatles and leadSinger is John, set it as John Lennon
+	if r.Name == "beatles" && r.Spec.LeadSinger == "John" {
+		r.Spec.LeadSinger = "John Lennon"
+	}
 	// if the rockband name is ledzeppelin and leadGuitar is Jimmy, set it as Jimmy Page
 	if r.Name == "ledzeppelin" && r.Spec.LeadGuitar == "Jimmy" {
 		r.Spec.LeadGuitar = "Jimmy Page"
+	}
+
+	// if the rockband name is beatles and leadGuitar is George, set it as George Harrison
+	if r.Name == "beatles" && r.Spec.LeadGuitar == "George" {
+		r.Spec.LeadGuitar = "George Harrison"
 	}
 
 	rockbandlog.Info("mutator default final", "name", r.Name, "namespace", r.Namespace, "lead guitar", r.Spec.LeadGuitar)

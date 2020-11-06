@@ -43,14 +43,15 @@ var _ webhook.Defaulter = &RockBand{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *RockBand) Default() {
-	rockbandlog.Info("mutator default", "name", r.Name, "namespace", r.Namespace)
+	rockbandlog.Info("mutator default v1", "name", r.Name, "namespace", r.Namespace)
 
 	// TODO(user): fill in your defaulting logic.
 
 	// LeadSinger is an optional field on RockBandv1
 	// Adding "TBD" if it is empty
 	if r.Spec.LeadSinger == "" {
-		r.Spec.LeadSinger = "TBD"
+		r.Spec.LeadSinger = "TBD from v1 webhook"
+		rockbandlog.Info("mutator v1 object created without leadSinger, setting as TBD from v1 webhook", "name", r.Name, "namespace", r.Namespace, "lead singer", r.Spec.LeadSinger)
 	}
 
 	// Silly mutation:
