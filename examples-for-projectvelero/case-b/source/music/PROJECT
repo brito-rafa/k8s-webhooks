@@ -1,0 +1,13 @@
+domain: example.io
+repo: music
+resources:
+- group: music
+  kind: RockBand
+  version: v1
+- group: music
+  kind: RockBand
+  version: v2beta1
+- group: music
+  kind: RockBand
+  version: v2beta2
+version: "2"

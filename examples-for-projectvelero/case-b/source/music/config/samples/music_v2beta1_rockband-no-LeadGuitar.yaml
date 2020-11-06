@@ -1,0 +1,10 @@
+apiVersion: music.example.io/v2beta1
+kind: RockBand
+metadata:
+  name: ramones
+spec:
+  # Add fields here
+  genre: Punk
+  numberComponents: 4
+  leadSinger: Joey
+  # no leadGuitar - it should display as "TBD"

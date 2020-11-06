@@ -59,8 +59,7 @@ First step is using the kubebuilder scaffolding:
 mkdir music; cd music
 go mod init music
 kubebuilder init --domain example.io
-kubebuilder create api --group music --version v1 --kind RockBand
-# press y for both "Create Resource" and "Create Controller"
+kubebuilder create api --group music --version v1 --kind RockBand --resource=true --controller=true
 ```
 
 It creates a directory structure.
