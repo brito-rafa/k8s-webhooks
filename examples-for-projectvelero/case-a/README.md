@@ -8,7 +8,9 @@ Expected result: v1 being used during restore.
 
 ## Deploying the Case A
 
-### Quick Deploy on Source Cluster
+### Quick Deploy
+
+#### Quick Deploy on Source Cluster
 
 Run:
 
@@ -16,7 +18,7 @@ Run:
 curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/source-cluster.sh | bash
 ```
 
-### Quick Deploy on Target Cluster
+#### Quick Deploy on Target Cluster
 
 Run:
 
@@ -24,7 +26,9 @@ Run:
 curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/target-cluster.sh | bash
 ```
 
-### Step-by-step Deployment on Source Cluster
+### Step-by-step Deployment
+
+#### Step-by-step Deployment on Source Cluster
 
 Run:
 
@@ -41,7 +45,7 @@ kubectl get rockbands -A -o yaml
 ```
 
 
-### Step-by-step Deployment on Target Cluster
+#### Step-by-step Deployment on Target Cluster
 
 Run:
 

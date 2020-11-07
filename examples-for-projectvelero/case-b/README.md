@@ -23,7 +23,9 @@ Evolution of RockBand.music.example.io schema across versions:
 
 ## Deploying the Case B
 
-### Quick Deploy on Source Cluster
+### Quick Deployment
+
+#### Quick Deploy on Source Cluster
 
 Run:
 
@@ -31,7 +33,7 @@ Run:
 curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-b/source-cluster.sh | bash
 ```
 
-### Quick Deploy on Target Cluster
+#### Quick Deploy on Target Cluster
 
 Run:
 
@@ -39,7 +41,9 @@ Run:
 curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-b/target-cluster.sh | bash
 ```
 
-### Step-by-step Deployment on Source Cluster
+### Step-by-step Deployment
+
+#### Step-by-step Deployment on Source Cluster
 
 Run:
 
@@ -55,8 +59,7 @@ kubectl create --validate=false -f https://raw.githubusercontent.com/brito-rafa/
 kubectl get rockbands -A -o yaml
 ```
 
-
-### Step-by-step Deployment on Target Cluster
+#### Step-by-step Deployment on Target Cluster
 
 Run:
 
@@ -206,8 +209,6 @@ export IMG=quay.io/brito_rafa/music-controller:case-b-target-v0.1
 make docker-build && make docker-push & kustomize build config/default > ../case-b-target.yaml
 make deploy IMG=quay.io/brito_rafa/music-controller:case-b-target-v0.1
 ```
-
-
 
 ## Generating the YAML and Image
 
