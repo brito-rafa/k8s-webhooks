@@ -63,7 +63,7 @@ Run:
 ```bash
 kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v1.0.3/cert-manager.yaml
 sleep 10
-kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/target/case-a-target.yaml
+kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-b/target/case-b-target-manually-added-mutations.yaml
 sleep 10
 # no need to create testing CR - should be from Velero backup
 ```
@@ -164,7 +164,7 @@ cp ../../source/music/api/v1/rockband_conversion.go api/v2beta2/
 
 # coding the v2beta1 conversion to v2beta2
 cp ../../source/music/api/v2beta1/rockband_conversion.go api/v2beta1/rockband_conversion.go
-# make new code here
+# make new code here, do not forget to change import and package name
 
 
 # Enabling webhooks and fixing kubebuilder
@@ -178,27 +178,65 @@ make manifests && make generate && make install
 # copying/generating the samples
 cp ../../source/music/config/samples/* config/samples/
 
-# edit the samples to match your 
+# edit the samples to match your case
+
+# $ kubectl get --raw /apis/music.example.io | jq
+{
+  "kind": "APIGroup",
+  "apiVersion": "v1",
+  "name": "music.example.io",
+  "versions": [
+    {
+      "groupVersion": "music.example.io/v2beta2",
+      "version": "v2beta2"
+    },
+    {
+      "groupVersion": "music.example.io/v2beta1",
+      "version": "v2beta1"
+    }
+  ],
+  "preferredVersion": {
+    "groupVersion": "music.example.io/v2beta2",
+    "version": "v2beta2"
+  }
+}
 
 # creating the image
-export IMG=quay.io/brito_rafa/music-controller:case-a-target-v0.1
-
-make docker-build
-make docker-push
-kustomize build config/default > ../case-a-target.yaml
+export IMG=quay.io/brito_rafa/music-controller:case-b-target-v0.1
+make docker-build && make docker-push & kustomize build config/default > ../case-b-target.yaml
+make deploy IMG=quay.io/brito_rafa/music-controller:case-b-target-v0.1
 ```
 
 
 
 ## Generating the YAML and Image
 
+***ATTENTION:***
+There is a bug on kubebuilder that is not generating more than one mutating webhook. You will need to generate the yaml as specified in this steps and then add the other mutations manually.
+
+Please see manually edited files `case-b-source-manually-added-mutations.yaml` and 
+`case-b-target-manually-added-mutations.yaml`.
+
+### Source
 With the code:
 ```bash
-export IMG=quay.io/brito_rafa/music-controller:case-a-source-v0.1
+export IMG=quay.io/brito_rafa/music-controller:case-b-source-v0.1
 make docker-build
 make docker-push
-kustomize build config/default > ../case-a-source.yaml
+kustomize build config/default > ../case-b-source.yaml
 
 # if you want to test the image 
-make deploy IMG=quay.io/brito_rafa/music-controller:case-a-source-v0.1
+make deploy IMG=quay.io/brito_rafa/music-controller:case-b-source-v0.1
+```
+
+### Target
+With the code:
+```bash
+export IMG=quay.io/brito_rafa/music-controller:case-b-target-v0.1
+make docker-build
+make docker-push
+kustomize build config/default > ../case-b-target.yaml
+
+# if you want to test the image 
+make deploy IMG=quay.io/brito_rafa/music-controller:case-b-target-v0.1
 ```
