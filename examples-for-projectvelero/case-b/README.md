@@ -134,33 +134,38 @@ Please see manually edited file `case-b-source-manually-added-mutations.yaml`
 
 ### Target cluster
 
-Created from scratch since the preferred version is now v2
+Created from scratch since the preferred version is now v2beta2
 
 ```bash
 mkdir music
 cd music/
 go mod init music
 kubebuilder init --domain example.io
-kubebuilder create api --group music --version v1 --kind RockBand --resource=true --controller=true
-kubebuilder create webhook --group music --version v1 --kind RockBand --defaulting --programmatic-validation
+kubebuilder create api --group music --version v2beta2 --kind RockBand --resource=true --controller=true
+kubebuilder create webhook --group music --version v2beta2 --kind RockBand --defaulting --programmatic-validation
 kubebuilder create api --group music --version v2beta1 --kind RockBand --resource=true --controller=false
 kubebuilder create webhook --group music --version v2beta1 --kind RockBand --conversion
 
-# setting to use CRD v1
+# setting to use CRD v1 - using the source
 cp ../../source/music/Makefile Makefile
 
-# change the v1/rockband_types.go - preferred version
-# make sure to add the kubebuilder tag // +kubebuilder:storageversion
-# I am copying because in "Case A" the preferred versions are the same
-cp ../../source/music/api/v1/rockband_types.go api/v1/rockband_types.go 
-cp ../../source/music/api/v1/rockband_conversion.go api/v1/rockband_conversion.go
-cp ../../source/music/api/v1/rockband_webhook.go api/v1/rockband_webhook.go 
+# Make v2beta2/rockband_types.go - preferred version
+# adding the kubebuilder tag // +kubebuilder:storageversion
 
-# catering v2beta1
-# just need to change Spec and Status (no kubebuilder tags)
-# on rockbands_types.go
-# create a rockbands_conversion.go - you can copy from another version
-# just remember to change the package name
+# re-using v2beta1 types and webhooks
+cp ../../source/music/api/v2beta1/rockband_types.go api/v2beta1/rockband_types.go
+
+# re-using v2beta2 webhook
+cp ../../source/music/api/v2beta2/rockband_webhook.go api/v2beta2/rockband_webhook.go 
+
+# setting up the hub
+# do not forget to change the package name to v2beta2
+cp ../../source/music/api/v1/rockband_conversion.go api/v2beta2/
+
+# coding the v2beta1 conversion to v2beta2
+cp ../../source/music/api/v2beta1/rockband_conversion.go api/v2beta1/rockband_conversion.go
+# make new code here
+
 
 # Enabling webhooks and fixing kubebuilder
 cp ../../source/music/config/default/kustomization.yaml config/default/kustomization.yaml

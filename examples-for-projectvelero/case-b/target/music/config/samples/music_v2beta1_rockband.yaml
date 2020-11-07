@@ -1,0 +1,10 @@
+apiVersion: music.example.io/v2beta1
+kind: RockBand
+metadata:
+  name: ledzeppelin
+spec:
+  # Add fields here
+  genre: '70s rock'
+  numberComponents: 4
+  leadSinger: Robert
+  leadGuitar: Jimmy

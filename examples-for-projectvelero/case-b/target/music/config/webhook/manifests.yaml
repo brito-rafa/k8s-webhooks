@@ -1,0 +1,70 @@
+
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: mutating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-music-example-io-v2beta2-rockband
+  failurePolicy: Fail
+  name: mrockband.kb.io
+  rules:
+  - apiGroups:
+    - music.example.io
+    apiVersions:
+    - v2beta2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - rockbands
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-music-example-io-v2beta1-rockband
+  failurePolicy: Fail
+  name: mrockband.kb.io
+  rules:
+  - apiGroups:
+    - music.example.io
+    apiVersions:
+    - v2beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - rockbands
+
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: validating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-music-example-io-v2beta2-rockband
+  failurePolicy: Fail
+  name: vrockband.kb.io
+  rules:
+  - apiGroups:
+    - music.example.io
+    apiVersions:
+    - v2beta2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - rockbands
