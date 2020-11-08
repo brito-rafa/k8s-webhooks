@@ -105,7 +105,7 @@ cp ../../../case-b/target/music/api/v2beta1/rockband_conversion.go api/v1/
 
 # Enabling webhooks and fixing kubebuilder
 cp ../../../case-b/target/music/config/default/kustomization.yaml config/default/kustomization.yaml
-cp ../../../case-b/target/music/certmanager/certificate.yaml config/certmanager/certificate.yaml 
+cp ../../../case-b/target/music/config/certmanager/certificate.yaml config/certmanager/certificate.yaml 
 cp ../../../case-b/target/music/config/crd/kustomization.yaml config/crd/kustomization.yaml
 cp ../../../case-b/target/music/config/crd/patches/* config/crd/patches/
 

@@ -1,0 +1,7 @@
+apiVersion: music.example.io/v2beta2
+kind: RockBand
+metadata:
+  name: rockband-sample
+spec:
+  # Add fields here
+  foo: bar

@@ -20,9 +20,9 @@ var (
 	// default drummer string to be used when converting from v1 to v2
 	defaultValueDrummerConverter = "Converted from v1 to v2"
 
-	// this is the annotation key to keep drummer value if converted from v1 to v2
+	// this is the annotation key to keep bass value if converted from v1 to v2
 	bassAnnotation = "rockbands.v2.music.example.io/bass"
-	// default drummer string to be used when converting from v1 to v2
+	// default bass string to be used when converting from v1 to v2
 	defaultValueBassConverter = "Converted from v1 to v2"
 )
 
@@ -57,6 +57,15 @@ func (src *RockBand) ConvertTo(dstRaw conversion.Hub) error {
 		rockbandlog.Info("ConvertTo v2 from v1 - no annotations, using the default", "name", dst.Name, "namespace", dst.Namespace, "drummer", dst.Spec.Drummer)
 	}
 
+	if annotations != nil && annotations[bassAnnotation] != "" {
+		dst.Spec.Bass = annotations[bassAnnotation]
+		rockbandlog.Info("ConvertTo v2 from v1 - found annotations", "name", dst.Name, "namespace", dst.Namespace, "bass", dst.Spec.Bass)
+	} else {
+		// Setting a default string as bass
+		dst.Spec.Bass = defaultValueBassConverter
+		rockbandlog.Info("ConvertTo v2 from v1 - no annotations, using the default", "name", dst.Name, "namespace", dst.Namespace, "bass", dst.Spec.Bass)
+	}
+
 	// Other Spec
 	dst.Spec.NumberComponents = src.Spec.NumberComponents
 	dst.Spec.Genre = src.Spec.Genre
@@ -83,6 +92,11 @@ func (dst *RockBand) ConvertFrom(srcRaw conversion.Hub) error {
 
 	if annotations == nil {
 		annotations = make(map[string]string)
+	}
+
+	if src.Spec.Bass != defaultValueBassConverter {
+		annotations[bassAnnotation] = src.Spec.Bass
+		rockbandlog.Info("ConvertTo v1 from v2 - set annotations", "name", src.Name, "namespace", src.Namespace, "bass", src.Spec.Bass)
 	}
 
 	if src.Spec.Drummer != defaultValueDrummerConverter {
