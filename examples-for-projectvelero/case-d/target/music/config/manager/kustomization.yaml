@@ -5,4 +5,4 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/brito_rafa/music-controller
-  newTag: case-d-target-v0.2
+  newTag: case-d-target-v0.1

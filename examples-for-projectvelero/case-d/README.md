@@ -71,21 +71,7 @@ They are the same steps case a source cluster. No need to reproduce here.
 Created from case-c target and manually edited multiple files.
 
 # creating the image
-export IMG=quay.io/brito_rafa/music-controller:case-c-target-v0.1
-make docker-build && make docker-push & kustomize build config/default > ../case-c-target.yaml
-make deploy IMG=quay.io/brito_rafa/music-controller:case-c-target-v0.1
-```
-
-
-## Generating the YAML and Image
-
-With the code:
-```bash
-export IMG=quay.io/brito_rafa/music-controller:case-c-target-v0.1
-make docker-build
-make docker-push
-kustomize build config/default > ../case-c-target.yaml
-
-# if you want to test the image 
-make deploy IMG=quay.io/brito_rafa/music-controller:case-c-target-v0.1
+export IMG=quay.io/brito_rafa/music-controller:case-d-target-v0.1
+make docker-build && make docker-push & kustomize build config/default > ../case-d-target.yaml
+make deploy IMG=quay.io/brito_rafa/music-controller:case-d-target-v0.1
 ```
