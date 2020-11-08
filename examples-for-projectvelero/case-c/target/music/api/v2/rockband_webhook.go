@@ -92,8 +92,8 @@ func (r *RockBand) Default() {
 	}
 
 	// if the rockband name is beatles and bass is Paul, set it as Paul McCartney
-	if r.Name == "beatles" && r.Spec.Drummer == "Paul" {
-		r.Spec.Drummer = "Paul McCartney"
+	if r.Name == "beatles" && r.Spec.Bass == "Paul" {
+		r.Spec.Bass = "Paul McCartney"
 	}
 
 	rockbandlog.Info("mutator default final v2", "name", r.Name, "namespace", r.Namespace, "lead guitar", r.Spec.LeadGuitar, "drummer", r.Spec.Drummer, "bass", r.Spec.Bass)
