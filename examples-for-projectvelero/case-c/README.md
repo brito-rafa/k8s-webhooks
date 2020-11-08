@@ -150,11 +150,11 @@ make deploy IMG=quay.io/brito_rafa/music-controller:case-c-target-v0.1
 
 With the code:
 ```bash
-export IMG=quay.io/brito_rafa/music-controller:case-a-source-v0.1
+export IMG=quay.io/brito_rafa/music-controller:case-c-target-v0.1
 make docker-build
 make docker-push
-kustomize build config/default > ../case-a-source.yaml
+kustomize build config/default > ../case-c-target.yaml
 
 # if you want to test the image 
-make deploy IMG=quay.io/brito_rafa/music-controller:case-a-source-v0.1
+make deploy IMG=quay.io/brito_rafa/music-controller:case-c-target-v0.1
 ```
