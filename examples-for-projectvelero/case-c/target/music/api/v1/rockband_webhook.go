@@ -60,7 +60,7 @@ func (r *RockBand) Default() {
 		r.Spec.LeadSinger = "John Lennon"
 	}
 
-	rockbandlog.Info("mutator default final v1", "name", r.Name, "namespace", r.Namespace, "lead guitar", r.Spec.LeadGuitar)
+	rockbandlog.Info("mutator default final v1", "name", r.Name, "namespace", r.Namespace, "lead singer", r.Spec.LeadSinger)
 
 }
 
