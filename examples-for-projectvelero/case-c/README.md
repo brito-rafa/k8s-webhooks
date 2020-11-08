@@ -27,7 +27,7 @@ curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/exam
 Run:
 
 ```bash
-curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/target-cluster.sh | bash
+curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target-cluster.sh | bash
 ```
 
 ### Step-by-step Deployment
