@@ -4,5 +4,4 @@ kubectl apply --validate=false -f https://raw.githubusercontent.com/brito-rafa/k
 while  [ "$(kubectl get pods -n music-system | grep -i running | grep '2/2' |  wc -l | awk '{print $1}')" != "1" ]; do echo "INFO: Waiting music-system...  Break if it is taking too long..." && kubectl get pods -n music-system && sleep 10 ; done
 kubectl get pods -n music-system
 echo "INFO: Run a Velero Restore or create the testing CRs running:"
-echo "    kubectl create --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target/music/config/samples/music_v1_rockband.yaml"
-echo "    kubectl create --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target/music/config/samples/music_v2_rockband.yaml"
+echo "    kubectl create --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-d/target/music/config/samples/music_v2_rockband.yaml"
