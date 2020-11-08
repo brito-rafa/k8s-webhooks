@@ -146,9 +146,6 @@ make deploy IMG=quay.io/brito_rafa/music-controller:case-c-target-v0.1
 ```
 
 
-
-
-
 ## Generating the YAML and Image
 
 With the code:
