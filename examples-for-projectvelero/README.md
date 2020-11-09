@@ -36,20 +36,15 @@ spec:
 Running the controller and installing the music.example.io API Groups:
 
 ```bash
-# installing the controller & API Group - using one of the cases, which is RockBandv2 (preferred) & RockBandv1 (supported)
+# installing the controller & API Group - using case C target: RockBandv2 (preferred) & RockBandv1 (supported)
 $ curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target-cluster.sh | bash
 (...)
-NAME                                        READY   STATUS    RESTARTS   AGE
-music-controller-manager-84d898799b-trh9l   2/2     Running   0          11s
-INFO: Run a Velero Restore or create the testing CRs running:
-    kubectl create --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target/music/config/samples/music_v1_rockband.yaml
-    kubectl create --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target/music/config/samples/music_v2_rockband.yaml
 
 # Creating a RockBand Example
 $ kubectl create --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target/music/config/samples/music_v2_rockband.yaml 
 rockband.music.example.io/beatles created
 
-# Showing the Resource created - noted the mutations kicked in
+# Showing the Resource created - the field mutations were for testing / debugging purposes
 $ kubectl get rockband beatles -o yaml
 apiVersion: music.example.io/v2
 kind: RockBand
@@ -66,6 +61,28 @@ spec:
   drummer: Ringo Starr
   genre: 60s rock
   leadGuitar: George Harrison
+  leadSinger: John Lennon
+  numberComponents: 4
+status:
+  lastPlayed: "2020"
+
+$ kubectl get rockband.v1.music.example.io beatles -o yaml
+piVersion: music.example.io/v1
+kind: RockBand
+metadata:
+  annotations:
+    rockbands.v2beta1.music.example.io/leadGuitar: George Harrison
+    rockbands.v2beta2.music.example.io/drummer: Ringo Starr
+    rockbands.v2.music.example.io/bass: Paul McCartney
+  creationTimestamp: "2020-11-09T16:30:42Z"
+  generation: 1
+  name: beatles
+  namespace: default
+  resourceVersion: "2178"
+  selfLink: /apis/music.example.io/v1/namespaces/default/rockbands/beatles
+  uid: 51ea2460-7015-4605-96f3-4d23cd72eae7
+spec:
+  genre: 60s rock
   leadSinger: John Lennon
   numberComponents: 4
 status:
