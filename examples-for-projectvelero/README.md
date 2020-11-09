@@ -125,6 +125,8 @@ Expected result: `v1` being used during restore.
 
 [case-b directory](/examples-for-projectvelero/case-b/): code and instructions how to setup.
 
+**Attention**: this use case is very unlikely to happen because the target preferred version should be a stable (v1, v2, etc) version.
+
 Rationale: `target preferred version != source preferred version; target preferred version belongs in source supported version array`
 
 RockBand on Source cluster: v1 (preferred), v2beta2, v2beta1
@@ -133,7 +135,6 @@ RockBand on Target cluster: v2beta2 (preferred), v2beta1
 
 Expected result: `v2beta2` being used during restore.
 
-**Attention**: this use case is very unlikely to happen because the target preferred version should be have a stable version.
 
 ## Case C
 
