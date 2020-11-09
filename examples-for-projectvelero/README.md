@@ -8,7 +8,7 @@ https://github.com/vmware-tanzu/velero/pull/3050
 
 For such, we need an API group with multiple versions.
 
-Evolution of RockBand.music.example.io schema across versions:
+Evolution of RockBand.music.example.io schema across API Group versions:
 
 - `RockBandv1alpha1` : Fields `Spec.Genre`, `Spec.NumberComponents`
 - `RockBandv1` : all previous plus `Spec.LeadSinger`
@@ -39,12 +39,20 @@ Running the controller and installing the music.example.io API Groups:
 # installing the controller & API Group - using case C target: RockBandv2 (preferred) & RockBandv1 (supported)
 $ curl -k -s https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target-cluster.sh | bash
 (...)
+NAME                                        READY   STATUS    RESTARTS   AGE
+music-controller-manager-84d898799b-7xd54   2/2     Running   0          11s
+```
 
-# Creating a RockBand Example
+Now, creating a RockBand example:
+
+```bash
 $ kubectl create --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-c/target/music/config/samples/music_v2_rockband.yaml 
 rockband.music.example.io/beatles created
+```
 
-# Showing the Resource created - the field mutations were for testing / debugging purposes
+Showing the Custom Resource (CR) created across the two versions. The field mutations and conversions were for testing / debugging purposes:
+
+```bash
 $ kubectl get rockband beatles -o yaml
 apiVersion: music.example.io/v2
 kind: RockBand
@@ -89,7 +97,7 @@ status:
   lastPlayed: "2020"
 ```
 
-We will test 4 cases, each case will be a subdirectory here.
+We will test 4 cases with different combination of API group versions (each case will be a subdirectory).
 
 If you want to learn how to create this custom controller and API Group, recommend you to follow the [README.md here.](/README.md)
 
