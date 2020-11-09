@@ -8,7 +8,7 @@ Anyone can code multiple API Group versions from scratch using kubebuilder, but 
 
 For this example, I am coding the use case of a backward compability of the existent API Group `v1`. So, I am adding an earlier version `v1alpha1` of the same API group while keeping `v1` as the default version. You might want to read and follow the convention of the [K8s API versioning.](https://kubernetes.io/docs/reference/using-api/#api-versioning)
 
-Again, this is an academic example, you are free to create a newer version of the API group instead of an older one.
+Again, this is an academic example, you are free to create a newer version of the API group instead of an older one. You can see my other examples that I coded for [project velero](/examples-for-projectvelero) - it includes an insane amount of conversions back and forth with respective controllers. 
 
 At this time, you need to define two things on your API Group:
 
