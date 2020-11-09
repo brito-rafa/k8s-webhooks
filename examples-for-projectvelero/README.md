@@ -52,8 +52,8 @@ rockband.music.example.io/beatles created
 
 Showing the Custom Resource (CR) created across the two versions. The field mutations and conversions were for testing / debugging purposes:
 
-```bash
-$ kubectl get rockband beatles -o yaml
+```yaml
+# $ kubectl get rockband beatles -o yaml
 apiVersion: music.example.io/v2
 kind: RockBand
 metadata:
@@ -74,14 +74,14 @@ spec:
 status:
   lastPlayed: "2020"
 
-$ kubectl get rockband.v1.music.example.io beatles -o yaml
-piVersion: music.example.io/v1
+# $ kubectl get rockband.v1.music.example.io beatles -o yaml
+apiVersion: music.example.io/v1
 kind: RockBand
 metadata:
   annotations:
+    rockbands.v2.music.example.io/bass: Paul McCartney
     rockbands.v2beta1.music.example.io/leadGuitar: George Harrison
     rockbands.v2beta2.music.example.io/drummer: Ringo Starr
-    rockbands.v2.music.example.io/bass: Paul McCartney
   creationTimestamp: "2020-11-09T16:30:42Z"
   generation: 1
   name: beatles
