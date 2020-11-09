@@ -580,7 +580,21 @@ configurations:
 
 ***ATTENTION***:
 
-I had multiple issues running `make deploy` because  `music/config/crd/patches/*yaml` files were using apiextensions.k8s.io/v1beta1 instead of apiextensions.k8s.io/v1. I had to manually edit the files to follow the correct API Group version. 
+I had multiple issues running `make deploy` because  `music/config/crd/patches/*yaml` files were using apiextensions.k8s.io/v1beta1 instead of apiextensions.k8s.io/v1. 
+
+It seems this will be addressed on future v3 of Kubebuilder:
+https://github.com/kubernetes-sigs/kubebuilder/issues/1065
+
+Errors:
+```
+Error: accumulating resources: accumulateFile "accumulating resources from '...' must resolve to a file", accumulateDirector: "recursed accumulation of path '.../config/crd': no matches for OriginalId apiextensions.k8s.io_v1betav1
+```
+
+
+Solution:
+
+
+I had to manually edit the files to follow the correct API Group version. 
 You can see my tweaked files [cainjection_in_rockbands.yaml](/single-gvk/music/config/crd/patches/cainjection_in_rockbands.yaml) and [webhook_in_rockbands.yaml](/single-gvk/music/config/crd/patches/webhook_in_rockbands.yaml).
 
 *Use them instead the default.*
