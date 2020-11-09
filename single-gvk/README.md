@@ -188,7 +188,7 @@ Please note that there is no Status set. This is because we do not have yet a co
 
 ## Compiling and Starting the Controller
 
-Since we do not care much about the busines logic on the controller, the only thing my controller will do is setting the lastPlayed Status field with the current year.
+Since we do not care much about the business logic on the controller, the only thing my controller will do is setting the lastPlayed Status field with the current year.
 
 Here is the snippet of the `music/controllers/rockband_controller.go`
 
