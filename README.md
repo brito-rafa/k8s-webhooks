@@ -38,7 +38,9 @@ I found easier to code this example in major two steps:
 
 ## First Example: A single Group Version Kind (GVK)
 
-*** START HERE ***
+*** ATTENTION: ***
+
+***START HERE***
 
 This is the first example and we will start with one version of the group and kind: `RockBandv1`.
 Please start at [README.md](/single-gvk/README.md).
@@ -48,6 +50,10 @@ Please start at [README.md](/single-gvk/README.md).
 This is the second example and it is built upon the first example. It creates the `RockBandv1alpha1`.
 Please refer at [README.md](/multiple-gvk/README.md).
 
+## Other Examples in this Repo
+
+I coded many other examples of converting `rockbands.music.example.io` back and forth to/from multiple versions.
+I had to do that for the Velero contribution. You can see them at [README.md](/examples-for-projectvelero/README.md).
 
 ## Pre-reqs for this Development and Testing
 
