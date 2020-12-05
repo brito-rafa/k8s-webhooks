@@ -76,9 +76,9 @@ echo "    kubectl create namespace rockbands-v2beta1"
 echo "    kubectl create -n rockbands-v2beta1 --validate=false -f https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-d/target/music/config/samples/music_v2beta1_rockband.yaml"
 ```
 
-#### Expected result on target cluster
+### Expected result
 
-If you ran the command lines from the example above, you should see the following CRs:
+On the target cluster, if you ran the command lines from the example above, you should see the following CRs:
 
 - `beatles` CR on `rockbands-v2` namespace should have all the Fab 4.
 - `beatles` CR on `rockbands-v2beta2` namespace should have the line `bass: Converted from v2beta2 to v2`
@@ -88,13 +88,16 @@ If you ran the command lines from the example above, you should see the followin
 
 ### Source Cluster: See Case B Source cluster
 
-They are the same steps case b source cluster. No need to reproduce here. 
+They are the same steps case b source cluster. No need to reproduce here.
 
 ### Target Cluster
 
 Created from case-c target and manually edited multiple files.
 
-# creating the image
+#### Creating the image
+
+```bash
+cd case-d/target/music
 export IMG=quay.io/brito_rafa/music-controller:case-d-target-v0.1
 make docker-build && make docker-push & kustomize build config/default > ../case-d-target.yaml
 make deploy IMG=quay.io/brito_rafa/music-controller:case-d-target-v0.1
