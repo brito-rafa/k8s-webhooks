@@ -1,7 +1,11 @@
 apiVersion: music.example.io/v2beta2
 kind: RockBand
 metadata:
-  name: rockband-sample
+  name: beatles
 spec:
   # Add fields here
-  foo: bar
+  genre: '60s rock'
+  numberComponents: 4
+  leadSinger: John
+  leadGuitar: George
+  drummer: Ringo

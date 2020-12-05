@@ -10,10 +10,10 @@ import (
 
 var (
 
-	// this is the annotation key to keep bass value if converted from v2 to v2beta1
+	// this is the annotation key to keep bass value if converted from v2 to v2beta2
 	bassAnnotation = "rockbands.v2.music.example.io/bass"
-	// default bass string to be used when converting from v2beta1 to v2
-	defaultValueBassConverter = "Converted from v2beta1 to v2"
+	// default bass string to be used when converting from v2beta2 to v2
+	defaultValueBassConverter = "Converted from v2beta2 to v2"
 )
 
 // ConvertTo converts this RockBand v2beta2 to the Hub version (v2)
