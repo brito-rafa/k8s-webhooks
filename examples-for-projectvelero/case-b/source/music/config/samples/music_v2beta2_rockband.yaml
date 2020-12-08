@@ -2,6 +2,8 @@ apiVersion: music.example.io/v2beta2
 kind: RockBand
 metadata:
   name: beatles
+  annotations:
+    rockbands.music.example.io/originalVersion: v2beta2
 spec:
   # Add fields here
   genre: '60s rock'
