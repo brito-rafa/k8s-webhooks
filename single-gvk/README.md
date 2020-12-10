@@ -804,9 +804,9 @@ The file is [single-gvk-v0.1.yaml](/single-gvk/single-gvk-v0.1.yaml) and anyone 
 ```bash
 kubectl create -f single-gvk-v0.1.yaml
 ```
-## Next Step: Second Example of Multiple API Groups
+## Next Step: Conversion of GVK - Multiple API Groups
 
-If you arrived at this point, you graduated to create a second version of the RockBand API [here](/multiple-gvk/README.md).
+If you want to learn about conversion CRDs across multiple API Group versions (this is required when you need to add more fields on your established CRD), check the example of the RockBand API [here](/multiple-gvk/README.md).
 
 ## Errors Found during this Code
 
