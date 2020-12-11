@@ -85,6 +85,29 @@ type RockBandSpec struct {
 type RockBandStatus struct {
 	LastPlayed string `json:"lastPlayed"`
 }
+
+// +kubebuilder:validation:Optional
+// +kubebuilder:resource:shortName={"rb"}
+// +kubebuilder:printcolumn:name="Genre",type=string,JSONPath=`.spec.genre`
+// +kubebuilder:printcolumn:name="Number_Components",type=integer,JSONPath=`.spec.numberComponents`
+// +kubebuilder:printcolumn:name="Lead_Singer",type=string,JSONPath=`.spec.leadSinger`
+
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
+
+// RockBand is the Schema for the rockbands API
+type RockBand struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   RockBandSpec   `json:"spec,omitempty"`
+	Status RockBandStatus `json:"status,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+
+(...)
 ```
 
 As you can see, this is really a simple and silly example. RockBand has genre, number of components and lead singer as part of the `Spec` struct.
@@ -193,6 +216,37 @@ Since we do not care much about the business logic on the controller, the only t
 Here is the snippet of the `music/controllers/rockband_controller.go`
 
 ```go
+package controllers
+
+import (
+	"context"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/go-logr/logr"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	musicv1 "music/api/v1"
+)
+
+// RockBandReconciler reconciles a RockBand object
+type RockBandReconciler struct {
+	client.Client
+	Log    logr.Logger
+	Scheme *runtime.Scheme
+}
+
+// +kubebuilder:rbac:groups=music.example.io,resources=rockbands,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=music.example.io,resources=rockbands/status,verbs=get;update;patch
+
+func (r *RockBandReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
+	ctx := context.Background()
+	log := r.Log.WithValues("rockband", req.NamespacedName)
+	
   // your logic here
 
 	rb := &musicv1.RockBand{}
