@@ -417,9 +417,22 @@ This means the RockBand CR is mutable during this method. This is where you will
 
 In our example below, we set leadSinger as "TBD" if empty. And it sets "John Lennon" if leadSinger is "John" and CR name is "beatles".
 
-Note that in Default, there is no API error being returned.
+Note that in Default, there is no API error being returned. I added the import on the snippet below:
 
 ```go
+
+import (
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	ctrl "sigs.k8s.io/controller-runtime"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+)
+
+(...)
+
 func (r *RockBand) Default() {
 	rockbandlog.Info("mutator default", "name", r.Name, "namespace", r.Namespace)
 
