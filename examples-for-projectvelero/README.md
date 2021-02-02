@@ -6,7 +6,7 @@ https://github.com/vmware-tanzu/velero/issues/2551
 Current design doc (on the PR):
 https://github.com/vmware-tanzu/velero/pull/3050
 
-For such, we need an API group with multiple versions.
+For such, we need an API group with multiple versions. For the target clusters, please use k8s 1.18 and later.
 
 Evolution of RockBand.music.example.io schema across API Group versions:
 
@@ -178,3 +178,14 @@ rockbands.music.example.io=v2beta1,v2beta2
 ```
 
  `kubectl create configmap enableapigroupversions --from-file=<absolute path>/restoreResourcesVersionPriority -n velero`
+
+## Known Issues
+
+If you encounter the following errors, make sure you run the controller on a k8s cluster 1.18 and later.
+
+```
+mutatingwebhookconfiguration.admissionregistration.k8s.io/music-mutating-webhook-configuration created
+validatingwebhookconfiguration.admissionregistration.k8s.io/music-validating-webhook-configuration created
+Error from server (InternalError): error when creating "https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/target/case-a-target.yaml": Internal error occurred: failed calling webhook "webhook.cert-manager.io": Post https://cert-manager-webhook.cert-manager.svc:443/mutate?timeout=10s: dial tcp 10.96.80.208:443: connect: connection refused
+Error from server (InternalError): error when creating "https://raw.githubusercontent.com/brito-rafa/k8s-webhooks/master/examples-for-projectvelero/case-a/target/case-a-target.yaml": Internal error occurred: failed calling webhook "webhook.cert-manager.io": Post https://cert-manager-webhook.cert-manager.svc:443/mutate?timeout=10s: dial tcp 10.96.80.208:443: connect: connection refused
+```
