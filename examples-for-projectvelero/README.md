@@ -167,7 +167,7 @@ RockBand on Target cluster: v2 (preferred), v2beta2, v2beta1
 
 Expected result: v2beta1 and v2beta2 are common. `v2beta2` to be used during restore. 
 
-## Case D - Priority 0
+## Case D - Priority 0 with User Override
 
 To test priority 0 (user-defined), one can use the same as Case D, but configuring velero to use v2beta1 instead of v2beta2.
 
