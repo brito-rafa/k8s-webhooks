@@ -103,13 +103,20 @@ If you want to learn how to create this custom controller and API Group, recomme
 
 ## Cases
 
-See design doc for more details on each case.
+As per Velero current design, it will try the following priority list to use the API group version for restore:
+
+- **Priority 0** (User override). Users determine restore version priority using a config map. To test this use case, one can override case d.
+- **Priority 1**. Target preferred version can be used.
+- **Priority 2**. Source preferred version can be used.
+- **Priority 3**. A common supported version can be used. This means
+  - target supported version == source supported version
+  - if multiple support versions intersect, choose the version using the [Kubernetes’ version prioritization system](https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#version-priority)
 
 Note that Kubernetes has a version priority list, so stable releases (v1, v2, etc) are forced to be preferred versions in detriment of beta and alpha releases:
 https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#version-priority
 
 
-## Case A
+## Case A - Priority 1
 
 [case-a directory](/examples-for-projectvelero/case-a/): code and instructions how to setup.
 
@@ -121,7 +128,7 @@ RockBand on Target cluster: v1 (preferred), v2beta1
 
 Expected result: `v1` being used during restore.
 
-## Case B
+## Case B - Priority 1
 
 [case-b directory](/examples-for-projectvelero/case-b/): code and instructions how to setup.
 
@@ -136,7 +143,7 @@ RockBand on Target cluster: v2beta2 (preferred), v2beta1
 Expected result: `v2beta2` being used during restore.
 
 
-## Case C
+## Case C - Priority 2
 
 [case-c directory](/examples-for-projectvelero/case-c/): code and instructions how to setup.
 
@@ -148,7 +155,7 @@ RockBand on Target cluster: v2 (preferred), v1
 
 Expected result: `v1` being used during restore.
 
-## Case D
+## Case D - Priority 3
 
 [case-d directory](/examples-for-projectvelero/case-d/): code and instructions how to setup.
 
@@ -158,4 +165,16 @@ RockBand on Source cluster: v1 (preferred), v2beta2, v2beta1
 
 RockBand on Target cluster: v2 (preferred), v2beta2, v2beta1
 
-Expected result: v2beta1 and v2beta2 are common. `v2beta2` to be used during restore.
+Expected result: v2beta1 and v2beta2 are common. `v2beta2` to be used during restore. 
+
+## Case D - Priority 0
+
+To test priority 0 (user-defined), one can use the same as Case D, but configuring velero to use v2beta1 instead of v2beta2.
+
+For such, create a configmap with the following content (note the sequence of the API Group versions).
+
+```cm
+rockbands.music.example.io=v2beta1,v2beta2
+```
+
+ `kubectl create configmap enableapigroupversions --from-file=<absolute path>/restoreResourcesVersionPriority -n velero`
