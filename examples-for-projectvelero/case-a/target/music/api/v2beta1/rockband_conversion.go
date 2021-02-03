@@ -58,7 +58,7 @@ func (dst *RockBand) ConvertFrom(srcRaw conversion.Hub) error {
 
 	rockbandlog = logf.Log.WithName("rockband-convert-v1-to-v2beta1")
 
-	rockbandlog.Info("ConvertFrom v1 to v2beta1", "name", src.Name, "namespace", src.Namespace, "lead guitar is undef at this point.")
+	rockbandlog.Info("ConvertFrom v1 to v2beta1 - lead guitar is undef at this point", "name", src.Name, "namespace", src.Namespace)
 
 	// ObjectMeta
 	dst.ObjectMeta = src.ObjectMeta
