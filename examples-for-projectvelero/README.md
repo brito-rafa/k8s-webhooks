@@ -4,8 +4,11 @@ This work is to support the following change:
 https://github.com/vmware-tanzu/velero/issues/2551
 
 Pull requests:
+
 https://github.com/vmware-tanzu/velero/pull/2373 # backup
+
 https://github.com/vmware-tanzu/velero/pull/3133 # restore
+
 
 Design doc:
 https://github.com/vmware-tanzu/velero/pull/3050
