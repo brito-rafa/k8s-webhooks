@@ -3,7 +3,11 @@
 This work is to support the following change:
 https://github.com/vmware-tanzu/velero/issues/2551
 
-Current design doc (on the PR):
+Pull requests:
+https://github.com/vmware-tanzu/velero/pull/2373 # backup
+https://github.com/vmware-tanzu/velero/pull/3133 # restore
+
+Design doc:
 https://github.com/vmware-tanzu/velero/pull/3050
 
 For such, we need an API group with multiple versions. For the target clusters, please use k8s 1.18 and later.
